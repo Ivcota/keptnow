@@ -67,19 +67,57 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		expect(result).toBeInstanceOf(TaskNotFoundError);
 	});
 
-	it('findAll excludes soft-deleted tasks', async () => {
-		// This test verifies the findAll filter behaviour that will be added in the soft-delete slice.
-		// For now just verify created tasks appear in findAll (no deletedAt filtering yet for this slice).
-		const { created, all } = await Effect.runPromise(
+	it('softDelete sets deleted_at and findAll excludes the task', async () => {
+		const { created, allBefore, allAfter } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create({ title: 'findAll test', priority: 1 });
-				const all = yield* repo.findAll();
-				return { created, all };
+				const created = yield* repo.create({ title: 'Soft delete test', priority: 1 });
+				const allBefore = yield* repo.findAll();
+				yield* repo.softDelete(created.id);
+				const allAfter = yield* repo.findAll();
+				return { created, allBefore, allAfter };
 			}).pipe(Effect.provide(testLayer))
 		);
 
-		expect(all.some((t) => t.id === created.id)).toBe(true);
+		expect(allBefore.some((t) => t.id === created.id)).toBe(true);
+		expect(allAfter.some((t) => t.id === created.id)).toBe(false);
+	});
+
+	it('softDelete returns TaskNotFoundError for non-existent task', async () => {
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const repo = yield* TaskRepository;
+				return yield* repo.softDelete(999999).pipe(Effect.flip);
+			}).pipe(Effect.provide(testLayer))
+		);
+
+		expect(result).toBeInstanceOf(TaskNotFoundError);
+	});
+
+	it('softDelete returns TaskNotFoundError on double-delete', async () => {
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const repo = yield* TaskRepository;
+				const created = yield* repo.create({ title: 'Double delete test', priority: 1 });
+				yield* repo.softDelete(created.id);
+				return yield* repo.softDelete(created.id).pipe(Effect.flip);
+			}).pipe(Effect.provide(testLayer))
+		);
+
+		expect(result).toBeInstanceOf(TaskNotFoundError);
+	});
+
+	it('toggleCompletion returns TaskNotFoundError on soft-deleted task', async () => {
+		const result = await Effect.runPromise(
+			Effect.gen(function* () {
+				const repo = yield* TaskRepository;
+				const created = yield* repo.create({ title: 'Toggle on deleted', priority: 1 });
+				yield* repo.softDelete(created.id);
+				return yield* repo.toggleCompletion(created.id).pipe(Effect.flip);
+			}).pipe(Effect.provide(testLayer))
+		);
+
+		expect(result).toBeInstanceOf(TaskNotFoundError);
 	});
 
 	it('findAll still returns completed tasks', async () => {

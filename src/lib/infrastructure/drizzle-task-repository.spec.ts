@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { Effect, Layer } from 'effect';
 import { TaskRepository } from '$lib/domain/tasks/task-repository.js';
-import { createTask, toggleTaskCompletion } from '$lib/domain/tasks/use-cases.js';
+import { createTask, toggleTaskCompletion, removeTask } from '$lib/domain/tasks/use-cases.js';
 import { TaskNotFoundError } from '$lib/domain/tasks/errors.js';
 import { DrizzleTaskRepository } from './drizzle-task-repository.js';
 import { Database } from './database.js';
 import type { Task } from '$lib/domain/tasks/task.js';
+
+const makeDbLayer = (mockDb: object) =>
+	DrizzleTaskRepository.pipe(Layer.provide(Layer.succeed(Database, mockDb as never)));
 
 describe('DrizzleTaskRepository', () => {
 	it('layer depends on Database tag and provides TaskRepository', () => {
@@ -18,7 +21,9 @@ describe('DrizzleTaskRepository', () => {
 				})
 			}),
 			select: () => ({
-				from: () => Promise.resolve([fakeTask])
+				from: () => ({
+					where: () => Promise.resolve([fakeTask])
+				})
 			}),
 			update: () => ({
 				set: () => ({
@@ -29,12 +34,8 @@ describe('DrizzleTaskRepository', () => {
 			})
 		};
 
-		const testLayer = DrizzleTaskRepository.pipe(
-			Layer.provide(Layer.succeed(Database, mockDb as never))
-		);
-
 		return Effect.runPromise(
-			createTask({ title: 'Test task', priority: 1 }).pipe(Effect.provide(testLayer))
+			createTask({ title: 'Test task', priority: 1 }).pipe(Effect.provide(makeDbLayer(mockDb)))
 		).then((result) => {
 			expect(result).toEqual(fakeTask);
 		});
@@ -61,12 +62,43 @@ describe('DrizzleTaskRepository', () => {
 			})
 		};
 
-		const testLayer = DrizzleTaskRepository.pipe(
-			Layer.provide(Layer.succeed(Database, mockDb as never))
-		);
+		return Effect.runPromise(
+			toggleTaskCompletion({ id: 99 }).pipe(
+				Effect.provide(makeDbLayer(mockDb)),
+				Effect.flip
+			)
+		).then((result) => {
+			expect(result).toBeInstanceOf(TaskNotFoundError);
+			expect((result as TaskNotFoundError).id).toBe(99);
+		});
+	});
+
+	it('softDelete returns TaskNotFoundError when no row found', () => {
+		const mockDb = {
+			insert: () => ({
+				values: () => ({
+					returning: () => Promise.resolve([])
+				})
+			}),
+			select: () => ({
+				from: () => ({
+					where: () => Promise.resolve([])
+				})
+			}),
+			update: () => ({
+				set: () => ({
+					where: () => ({
+						returning: () => Promise.resolve([])
+					})
+				})
+			})
+		};
 
 		return Effect.runPromise(
-			toggleTaskCompletion({ id: 99 }).pipe(Effect.provide(testLayer), Effect.flip)
+			removeTask({ id: 99 }).pipe(
+				Effect.provide(makeDbLayer(mockDb)),
+				Effect.flip
+			)
 		).then((result) => {
 			expect(result).toBeInstanceOf(TaskNotFoundError);
 			expect((result as TaskNotFoundError).id).toBe(99);

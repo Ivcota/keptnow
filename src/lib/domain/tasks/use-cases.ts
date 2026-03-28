@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { TaskRepository } from './task-repository.js';
 import { TaskValidationError, TaskRepositoryError, TaskNotFoundError } from './errors.js';
-import type { Task, CreateTaskInput, CompleteTaskInput } from './task.js';
+import type { Task, CreateTaskInput, CompleteTaskInput, RemoveTaskInput } from './task.js';
 
 export const createTask = (
 	input: CreateTaskInput
@@ -31,4 +31,12 @@ export const toggleTaskCompletion = (
 	Effect.gen(function* () {
 		const repo = yield* TaskRepository;
 		return yield* repo.toggleCompletion(input.id);
+	});
+
+export const removeTask = (
+	input: RemoveTaskInput
+): Effect.Effect<void, TaskRepositoryError | TaskNotFoundError, TaskRepository> =>
+	Effect.gen(function* () {
+		const repo = yield* TaskRepository;
+		yield* repo.softDelete(input.id);
 	});

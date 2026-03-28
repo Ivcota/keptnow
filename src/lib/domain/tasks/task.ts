@@ -13,3 +13,7 @@ export interface CreateTaskInput {
 export interface CompleteTaskInput {
 	id: number;
 }
+
+export interface RemoveTaskInput {
+	id: number;
+}

@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { Effect } from 'effect';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
-import { createTask, findAllTasks, toggleTaskCompletion } from '$lib/domain/tasks/use-cases';
+import { createTask, findAllTasks, toggleTaskCompletion, removeTask } from '$lib/domain/tasks/use-cases';
 
 export const load: PageServerLoad = async () => {
 	const tasks = await appRuntime.runPromise(
@@ -38,6 +38,25 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(toggleTaskCompletion({ id }), {
+				onFailure: (e) =>
+					e._tag === 'TaskNotFoundError'
+						? ({ ok: false as const, status: 404 as const, message: `Task ${e.id} not found` })
+						: ({ ok: false as const, status: 500 as const, message: 'Database error' }),
+				onSuccess: () => ({ ok: true as const })
+			})
+		);
+
+		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+	},
+
+	remove: async ({ request }) => {
+		const formData = await request.formData();
+		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
+
+		if (isNaN(id)) return fail(400, { message: 'Invalid task ID' });
+
+		const outcome = await appRuntime.runPromise(
+			Effect.match(removeTask({ id }), {
 				onFailure: (e) =>
 					e._tag === 'TaskNotFoundError'
 						? ({ ok: false as const, status: 404 as const, message: `Task ${e.id} not found` })

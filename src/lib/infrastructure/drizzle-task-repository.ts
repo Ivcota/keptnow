@@ -57,6 +57,32 @@ export const DrizzleTaskRepository = Layer.effect(
 					});
 
 					return updated;
+				}),
+			softDelete: (id) =>
+				Effect.gen(function* () {
+					const rows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select()
+								.from(task)
+								.where(and(eq(task.id, id), isNull(task.deletedAt))),
+						catch: (e) =>
+							new TaskRepositoryError({ message: 'Failed to find task', cause: e })
+					});
+
+					if (rows.length === 0) {
+						return yield* Effect.fail(new TaskNotFoundError({ id }));
+					}
+
+					yield* Effect.tryPromise({
+						try: () =>
+							db
+								.update(task)
+								.set({ deletedAt: new Date() })
+								.where(eq(task.id, id)),
+						catch: (e) =>
+							new TaskRepositoryError({ message: 'Failed to soft-delete task', cause: e })
+					});
 				})
 		};
 	})
