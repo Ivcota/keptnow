@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Effect, Layer } from 'effect';
 import { TaskRepository } from './task-repository.js';
 import { createTask, findAllTasks } from './use-cases.js';
+import { TaskValidationError } from './errors.js';
 import type { Task } from './task.js';
 
 describe('domain/tasks', () => {
@@ -36,5 +37,33 @@ describe('domain/tasks', () => {
 		);
 
 		expect(result).toEqual(tasks);
+	});
+
+	it('createTask fails with TaskValidationError for empty title', async () => {
+		const mockRepo = Layer.succeed(TaskRepository, {
+			create: () => Effect.succeed({ id: 1, title: '', priority: 1 }),
+			findAll: () => Effect.succeed([])
+		});
+
+		const result = await Effect.runPromise(
+			createTask({ title: '', priority: 1 }).pipe(Effect.provide(mockRepo), Effect.flip)
+		);
+
+		expect(result).toBeInstanceOf(TaskValidationError);
+		expect((result as TaskValidationError).message).toMatch(/empty/i);
+	});
+
+	it('createTask fails with TaskValidationError for non-positive priority', async () => {
+		const mockRepo = Layer.succeed(TaskRepository, {
+			create: () => Effect.succeed({ id: 1, title: 'Test', priority: 0 }),
+			findAll: () => Effect.succeed([])
+		});
+
+		const result = await Effect.runPromise(
+			createTask({ title: 'Test', priority: 0 }).pipe(Effect.provide(mockRepo), Effect.flip)
+		);
+
+		expect(result).toBeInstanceOf(TaskValidationError);
+		expect((result as TaskValidationError).message).toMatch(/positive/i);
 	});
 });
