@@ -12,7 +12,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	create: async ({ request }) => {
 		const formData = await request.formData();
 		const title = formData.get('title')?.toString() ?? '';
 		const priority = parseInt(formData.get('priority')?.toString() ?? '1', 10);

@@ -117,7 +117,7 @@
 			<h3 class="mb-4 font-[Cormorant_Garamond,serif] text-lg font-bold text-[#f0e6d3]">
 				Quick Add
 			</h3>
-			<form method="post" use:enhance class="flex flex-col gap-4">
+			<form method="post" action="?/create" use:enhance class="flex flex-col gap-4">
 				<div class="flex gap-3">
 					<label class="flex flex-1 flex-col gap-1">
 						<span class="text-xs tracking-[0.1em] text-[#6b6560]">TITLE</span>
