@@ -9,14 +9,14 @@ export const DrizzleTaskRepository = Layer.effect(
 		const db = yield* Database;
 		return {
 			create: (input) =>
-				Effect.tryPromise(() =>
+				Effect.promise(() =>
 					db
 						.insert(task)
 						.values(input)
 						.returning()
 						.then((rows) => rows[0])
 				),
-			findAll: () => Effect.tryPromise(() => db.select().from(task))
+			findAll: () => Effect.promise(() => db.select().from(task))
 		};
 	})
 );
