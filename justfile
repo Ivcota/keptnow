@@ -24,3 +24,6 @@ dev:
 
     echo "Starting dev server..."
     npm run dev
+
+studio:
+    npm run db:studio
