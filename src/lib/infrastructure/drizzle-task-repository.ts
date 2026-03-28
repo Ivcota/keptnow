@@ -10,29 +10,33 @@ export const DrizzleTaskRepository = Layer.effect(
 	Effect.gen(function* () {
 		const db = yield* Database;
 		return {
-			create: (input) =>
+			create: (userId, input) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.insert(task)
-							.values(input)
+							.values({ userId, ...input })
 							.returning()
 							.then((rows) => rows[0]),
 					catch: (e) => new TaskRepositoryError({ message: 'Failed to create task', cause: e })
 				}),
-			findAll: () =>
+			findAll: (userId) =>
 				Effect.tryPromise({
-					try: () => db.select().from(task).where(isNull(task.deletedAt)),
+					try: () =>
+						db
+							.select()
+							.from(task)
+							.where(and(eq(task.userId, userId), isNull(task.deletedAt))),
 					catch: (e) => new TaskRepositoryError({ message: 'Failed to fetch tasks', cause: e })
 				}),
-			toggleCompletion: (id) =>
+			toggleCompletion: (userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db
 								.select()
 								.from(task)
-								.where(and(eq(task.id, id), isNull(task.deletedAt))),
+								.where(and(eq(task.id, id), eq(task.userId, userId), isNull(task.deletedAt))),
 						catch: (e) =>
 							new TaskRepositoryError({ message: 'Failed to find task', cause: e })
 					});
@@ -49,7 +53,7 @@ export const DrizzleTaskRepository = Layer.effect(
 							db
 								.update(task)
 								.set({ completedAt: newCompletedAt })
-								.where(eq(task.id, id))
+								.where(and(eq(task.id, id), eq(task.userId, userId)))
 								.returning()
 								.then((rows) => rows[0]),
 						catch: (e) =>
@@ -58,14 +62,14 @@ export const DrizzleTaskRepository = Layer.effect(
 
 					return updated;
 				}),
-			softDelete: (id) =>
+			softDelete: (userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db
 								.select()
 								.from(task)
-								.where(and(eq(task.id, id), isNull(task.deletedAt))),
+								.where(and(eq(task.id, id), eq(task.userId, userId), isNull(task.deletedAt))),
 						catch: (e) =>
 							new TaskRepositoryError({ message: 'Failed to find task', cause: e })
 					});
@@ -79,7 +83,7 @@ export const DrizzleTaskRepository = Layer.effect(
 							db
 								.update(task)
 								.set({ deletedAt: new Date() })
-								.where(eq(task.id, id)),
+								.where(and(eq(task.id, id), eq(task.userId, userId))),
 						catch: (e) =>
 							new TaskRepositoryError({ message: 'Failed to soft-delete task', cause: e })
 					});

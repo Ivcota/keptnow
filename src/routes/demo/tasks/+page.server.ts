@@ -1,24 +1,32 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { Effect } from 'effect';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import { createTask, findAllTasks, toggleTaskCompletion, removeTask } from '$lib/domain/tasks/use-cases';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user) {
+		redirect(302, '/demo/better-auth/login');
+	}
+
+	const userId = locals.user.id;
 	const tasks = await appRuntime.runPromise(
-		findAllTasks().pipe(Effect.orDie)
+		findAllTasks(userId).pipe(Effect.orDie)
 	);
 	return { tasks };
 };
 
 export const actions: Actions = {
-	create: async ({ request }) => {
+	create: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
 		const formData = await request.formData();
 		const title = formData.get('title')?.toString() ?? '';
 		const priority = parseInt(formData.get('priority')?.toString() ?? '1', 10);
 
 		const outcome = await appRuntime.runPromise(
-			Effect.match(createTask({ title, priority }), {
+			Effect.match(createTask(userId, { title, priority }), {
 				onFailure: (e) =>
 					e._tag === 'TaskValidationError'
 						? ({ ok: false as const, status: 400 as const, message: e.message })
@@ -30,14 +38,17 @@ export const actions: Actions = {
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
 	},
 
-	complete: async ({ request }) => {
+	complete: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
 
 		if (isNaN(id)) return fail(400, { message: 'Invalid task ID' });
 
 		const outcome = await appRuntime.runPromise(
-			Effect.match(toggleTaskCompletion({ id }), {
+			Effect.match(toggleTaskCompletion(userId, { id }), {
 				onFailure: (e) =>
 					e._tag === 'TaskNotFoundError'
 						? ({ ok: false as const, status: 404 as const, message: `Task ${e.id} not found` })
@@ -49,14 +60,17 @@ export const actions: Actions = {
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
 	},
 
-	remove: async ({ request }) => {
+	remove: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
 
 		if (isNaN(id)) return fail(400, { message: 'Invalid task ID' });
 
 		const outcome = await appRuntime.runPromise(
-			Effect.match(removeTask({ id }), {
+			Effect.match(removeTask(userId, { id }), {
 				onFailure: (e) =>
 					e._tag === 'TaskNotFoundError'
 						? ({ ok: false as const, status: 404 as const, message: `Task ${e.id} not found` })

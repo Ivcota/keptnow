@@ -5,6 +5,8 @@ import { createTask, findAllTasks, toggleTaskCompletion, removeTask } from './us
 import { TaskValidationError, TaskNotFoundError } from './errors.js';
 import type { Task } from './task.js';
 
+const TEST_USER_ID = 'user-1';
+
 const makeRepo = (overrides: Partial<typeof TaskRepository.Service> = {}) =>
 	Layer.succeed(TaskRepository, {
 		create: () => Effect.succeed({ id: 1, title: 'x', priority: 1, completedAt: null }),
@@ -19,7 +21,7 @@ describe('domain/tasks', () => {
 		const created: Task = { id: 1, title: 'Buy milk', priority: 2, completedAt: null };
 
 		const result = await Effect.runPromise(
-			createTask({ title: 'Buy milk', priority: 2 }).pipe(
+			createTask(TEST_USER_ID, { title: 'Buy milk', priority: 2 }).pipe(
 				Effect.provide(makeRepo({ create: () => Effect.succeed(created) }))
 			)
 		);
@@ -34,7 +36,9 @@ describe('domain/tasks', () => {
 		];
 
 		const result = await Effect.runPromise(
-			findAllTasks().pipe(Effect.provide(makeRepo({ findAll: () => Effect.succeed(tasks) })))
+			findAllTasks(TEST_USER_ID).pipe(
+				Effect.provide(makeRepo({ findAll: () => Effect.succeed(tasks) }))
+			)
 		);
 
 		expect(result).toEqual(tasks);
@@ -42,7 +46,10 @@ describe('domain/tasks', () => {
 
 	it('createTask fails with TaskValidationError for empty title', async () => {
 		const result = await Effect.runPromise(
-			createTask({ title: '', priority: 1 }).pipe(Effect.provide(makeRepo()), Effect.flip)
+			createTask(TEST_USER_ID, { title: '', priority: 1 }).pipe(
+				Effect.provide(makeRepo()),
+				Effect.flip
+			)
 		);
 
 		expect(result).toBeInstanceOf(TaskValidationError);
@@ -51,7 +58,10 @@ describe('domain/tasks', () => {
 
 	it('createTask fails with TaskValidationError for non-positive priority', async () => {
 		const result = await Effect.runPromise(
-			createTask({ title: 'Test', priority: 0 }).pipe(Effect.provide(makeRepo()), Effect.flip)
+			createTask(TEST_USER_ID, { title: 'Test', priority: 0 }).pipe(
+				Effect.provide(makeRepo()),
+				Effect.flip
+			)
 		);
 
 		expect(result).toBeInstanceOf(TaskValidationError);
@@ -62,7 +72,7 @@ describe('domain/tasks', () => {
 		const toggled: Task = { id: 1, title: 'Buy milk', priority: 2, completedAt: new Date() };
 
 		const result = await Effect.runPromise(
-			toggleTaskCompletion({ id: 1 }).pipe(
+			toggleTaskCompletion(TEST_USER_ID, { id: 1 }).pipe(
 				Effect.provide(makeRepo({ toggleCompletion: () => Effect.succeed(toggled) }))
 			)
 		);
@@ -72,7 +82,7 @@ describe('domain/tasks', () => {
 
 	it('toggleTaskCompletion propagates TaskNotFoundError', async () => {
 		const result = await Effect.runPromise(
-			toggleTaskCompletion({ id: 99 }).pipe(
+			toggleTaskCompletion(TEST_USER_ID, { id: 99 }).pipe(
 				Effect.provide(
 					makeRepo({ toggleCompletion: () => Effect.fail(new TaskNotFoundError({ id: 99 })) })
 				),
@@ -86,14 +96,14 @@ describe('domain/tasks', () => {
 
 	it('removeTask delegates to repository', async () => {
 		const result = await Effect.runPromise(
-			removeTask({ id: 1 }).pipe(Effect.provide(makeRepo()))
+			removeTask(TEST_USER_ID, { id: 1 }).pipe(Effect.provide(makeRepo()))
 		);
 		expect(result).toBeUndefined();
 	});
 
 	it('removeTask propagates TaskNotFoundError', async () => {
 		const result = await Effect.runPromise(
-			removeTask({ id: 99 }).pipe(
+			removeTask(TEST_USER_ID, { id: 99 }).pipe(
 				Effect.provide(
 					makeRepo({ softDelete: () => Effect.fail(new TaskNotFoundError({ id: 99 })) })
 				),

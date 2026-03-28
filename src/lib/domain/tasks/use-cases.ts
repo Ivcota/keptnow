@@ -4,6 +4,7 @@ import { TaskValidationError, TaskRepositoryError, TaskNotFoundError } from './e
 import type { Task, CreateTaskInput, CompleteTaskInput, RemoveTaskInput } from './task.js';
 
 export const createTask = (
+	userId: string,
 	input: CreateTaskInput
 ): Effect.Effect<Task, TaskValidationError | TaskRepositoryError, TaskRepository> =>
 	Effect.gen(function* () {
@@ -16,27 +17,31 @@ export const createTask = (
 			);
 		}
 		const repo = yield* TaskRepository;
-		return yield* repo.create(input);
+		return yield* repo.create(userId, input);
 	});
 
-export const findAllTasks = (): Effect.Effect<Task[], TaskRepositoryError, TaskRepository> =>
+export const findAllTasks = (
+	userId: string
+): Effect.Effect<Task[], TaskRepositoryError, TaskRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* TaskRepository;
-		return yield* repo.findAll();
+		return yield* repo.findAll(userId);
 	});
 
 export const toggleTaskCompletion = (
+	userId: string,
 	input: CompleteTaskInput
 ): Effect.Effect<Task, TaskRepositoryError | TaskNotFoundError, TaskRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* TaskRepository;
-		return yield* repo.toggleCompletion(input.id);
+		return yield* repo.toggleCompletion(userId, input.id);
 	});
 
 export const removeTask = (
+	userId: string,
 	input: RemoveTaskInput
 ): Effect.Effect<void, TaskRepositoryError | TaskNotFoundError, TaskRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* TaskRepository;
-		yield* repo.softDelete(input.id);
+		yield* repo.softDelete(userId, input.id);
 	});

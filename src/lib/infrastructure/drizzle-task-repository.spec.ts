@@ -7,6 +7,8 @@ import { DrizzleTaskRepository } from './drizzle-task-repository.js';
 import { Database } from './database.js';
 import type { Task } from '$lib/domain/tasks/task.js';
 
+const TEST_USER_ID = 'user-1';
+
 const makeDbLayer = (mockDb: object) =>
 	DrizzleTaskRepository.pipe(Layer.provide(Layer.succeed(Database, mockDb as never)));
 
@@ -35,7 +37,9 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			createTask({ title: 'Test task', priority: 1 }).pipe(Effect.provide(makeDbLayer(mockDb)))
+			createTask(TEST_USER_ID, { title: 'Test task', priority: 1 }).pipe(
+				Effect.provide(makeDbLayer(mockDb))
+			)
 		).then((result) => {
 			expect(result).toEqual(fakeTask);
 		});
@@ -63,7 +67,7 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			toggleTaskCompletion({ id: 99 }).pipe(
+			toggleTaskCompletion(TEST_USER_ID, { id: 99 }).pipe(
 				Effect.provide(makeDbLayer(mockDb)),
 				Effect.flip
 			)
@@ -95,7 +99,7 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			removeTask({ id: 99 }).pipe(
+			removeTask(TEST_USER_ID, { id: 99 }).pipe(
 				Effect.provide(makeDbLayer(mockDb)),
 				Effect.flip
 			)
