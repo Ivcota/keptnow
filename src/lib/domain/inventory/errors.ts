@@ -16,3 +16,7 @@ export class FoodItemNotFoundError extends Data.TaggedError('FoodItemNotFoundErr
 export class FoodItemRestoreExpiredError extends Data.TaggedError('FoodItemRestoreExpiredError')<{
 	id: number;
 }> {}
+
+export class RestockConfigError extends Data.TaggedError('RestockConfigError')<{
+	message: string;
+}> {}

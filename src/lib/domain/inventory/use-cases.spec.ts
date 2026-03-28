@@ -11,6 +11,8 @@ import {
 } from './use-cases.js';
 import { FoodItemValidationError, FoodItemNotFoundError, FoodItemRestoreExpiredError } from './errors.js';
 import type { FoodItem } from './food-item.js';
+import { getRestockItems } from './restock.js';
+import { DEFAULT_EXPIRATION_CONFIG } from './expiration.js';
 
 const TEST_USER_ID = 'user-1';
 
@@ -299,5 +301,51 @@ describe('domain/inventory', () => {
 			)
 		);
 		expect(result).toBeInstanceOf(FoodItemRestoreExpiredError);
+	});
+});
+
+describe('domain/inventory restock integration', () => {
+	const now = new Date('2026-01-15T12:00:00Z');
+	const daysFromNow = (days: number) => new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+	it('getRestockItems filters items returned by findAllFoodItems', async () => {
+		const items = [
+			makeFoodItem({ id: 1, name: 'Expired Milk', expirationDate: daysFromNow(-1) }),
+			makeFoodItem({ id: 2, name: 'Fresh Eggs', expirationDate: daysFromNow(10) }),
+			makeFoodItem({ id: 3, name: 'Soon Cheese', expirationDate: daysFromNow(1) })
+		];
+
+		const allItems = await Effect.runPromise(
+			findAllFoodItems(TEST_USER_ID).pipe(
+				Effect.provide(makeRepo({ findAll: () => Effect.succeed(items) }))
+			)
+		);
+
+		const restockItems = await Effect.runPromise(
+			getRestockItems(allItems, DEFAULT_EXPIRATION_CONFIG, now)
+		);
+
+		expect(restockItems).toHaveLength(2);
+		expect(restockItems.map((r) => r.foodItem.id)).not.toContain(2);
+	});
+
+	it('getRestockItems sorts expired before expiring-soon from findAllFoodItems result', async () => {
+		const items = [
+			makeFoodItem({ id: 1, name: 'Soon Item', expirationDate: daysFromNow(2) }),
+			makeFoodItem({ id: 2, name: 'Expired Item', expirationDate: daysFromNow(-3) })
+		];
+
+		const allItems = await Effect.runPromise(
+			findAllFoodItems(TEST_USER_ID).pipe(
+				Effect.provide(makeRepo({ findAll: () => Effect.succeed(items) }))
+			)
+		);
+
+		const restockItems = await Effect.runPromise(
+			getRestockItems(allItems, DEFAULT_EXPIRATION_CONFIG, now)
+		);
+
+		expect(restockItems[0].expirationStatus).toBe('expired');
+		expect(restockItems[1].expirationStatus).toBe('expiring-soon');
 	});
 });
