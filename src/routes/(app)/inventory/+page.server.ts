@@ -5,13 +5,14 @@ import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import {
 	createFoodItem,
+	createFoodItems,
 	findAllFoodItems,
 	updateFoodItem,
 	trashFoodItem,
 	restoreFoodItem,
 	findTrashedFoodItems
 } from '$lib/domain/inventory/use-cases';
-import type { StorageLocation, TrackingType } from '$lib/domain/inventory/food-item';
+import type { StorageLocation, TrackingType, CreateFoodItemInput } from '$lib/domain/inventory/food-item';
 import { getRestockItems } from '$lib/domain/inventory/restock';
 import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration';
 
@@ -157,5 +158,53 @@ export const actions: Actions = {
 		);
 
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+	},
+
+	bulkCreate: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
+		const formData = await request.formData();
+		const itemsRaw = formData.get('items')?.toString() ?? '[]';
+
+		let rawItems: Array<{
+			name: string;
+			storageLocation: string;
+			trackingType: string;
+			quantity: number | null;
+			amount: number | null;
+			expirationDate: string | null;
+		}>;
+		try {
+			rawItems = JSON.parse(itemsRaw);
+		} catch {
+			return fail(400, { message: 'Invalid items data' });
+		}
+
+		if (rawItems.length === 0) {
+			return fail(400, { message: 'No items selected' });
+		}
+
+		const items: CreateFoodItemInput[] = rawItems.map((item) => ({
+			name: item.name,
+			storageLocation: item.storageLocation as StorageLocation,
+			trackingType: item.trackingType as TrackingType,
+			quantity: item.quantity,
+			amount: item.amount,
+			expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
+		}));
+
+		const outcome = await appRuntime.runPromise(
+			Effect.match(createFoodItems(userId, items), {
+				onFailure: (e) =>
+					e._tag === 'FoodItemValidationError'
+						? { ok: false as const, status: 400 as const, message: e.message }
+						: { ok: false as const, status: 500 as const, message: 'Database error' },
+				onSuccess: (created) => ({ ok: true as const, count: created.length })
+			})
+		);
+
+		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+		return { count: outcome.count };
 	}
 };
