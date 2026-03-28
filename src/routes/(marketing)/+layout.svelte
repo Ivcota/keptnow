@@ -1,5 +1,7 @@
 <script lang="ts">
-	let { children } = $props();
+	import type { LayoutData } from './$types';
+
+	let { data, children }: { data: LayoutData; children: any } = $props();
 </script>
 
 <div class="flex min-h-screen flex-col bg-[#f8f6f3] font-[Nunito_Sans,sans-serif]">
@@ -31,12 +33,21 @@
 				>
 					Roadmap
 				</a>
-				<a
-					href="/demo/better-auth/login"
-					class="rounded-lg bg-[#c4a46a] px-5 py-2 text-sm font-semibold tracking-wide text-[#1a1714] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a]"
-				>
-					Get Started
-				</a>
+				{#if data.user}
+					<a
+						href="/inventory"
+						class="rounded-lg bg-[#c4a46a] px-5 py-2 text-sm font-semibold tracking-wide text-[#1a1714] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a]"
+					>
+						Go to App
+					</a>
+				{:else}
+					<a
+						href="/login"
+						class="rounded-lg bg-[#c4a46a] px-5 py-2 text-sm font-semibold tracking-wide text-[#1a1714] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a]"
+					>
+						Get Started
+					</a>
+				{/if}
 			</div>
 		</nav>
 	</header>

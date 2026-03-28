@@ -174,16 +174,7 @@
 	</div>
 {/if}
 
-<div class="flex min-h-screen flex-col bg-[#f8f6f3] font-[Nunito_Sans,sans-serif]">
-	<nav class="border-b border-[#e8e2d9] bg-white">
-		<div class="mx-auto flex max-w-5xl items-center px-6 py-4">
-			<h1 class="font-[Cormorant_Garamond,serif] text-xl font-bold tracking-wide text-[#1a1714]">
-				Home Maker Assist
-			</h1>
-		</div>
-	</nav>
-
-	<main class="mx-auto w-full max-w-5xl px-6 py-10">
+<main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
 		<!-- Hero -->
 		<div
 			class="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1714] via-[#252018] to-[#2a2520] p-8 sm:p-10"
@@ -751,5 +742,4 @@
 				</form>
 			</section>
 		{/if}
-	</main>
-</div>
+</main>

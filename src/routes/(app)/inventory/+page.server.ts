@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { Effect } from 'effect';
+import { auth } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import {
@@ -16,7 +17,7 @@ import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
-		redirect(302, '/demo/better-auth/login');
+		redirect(302, '/login?redirectTo=/inventory');
 	}
 
 	const userId = locals.user.id;
@@ -46,6 +47,13 @@ function parseItemFields(formData: FormData) {
 }
 
 export const actions: Actions = {
+	signOut: async (event) => {
+		await auth.api.signOut({
+			headers: event.request.headers
+		});
+		return redirect(302, '/');
+	},
+
 	create: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
