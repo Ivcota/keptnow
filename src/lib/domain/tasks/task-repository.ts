@@ -1,10 +1,11 @@
 import { Context, Effect } from 'effect';
 import type { Task, CreateTaskInput } from './task.js';
-import type { TaskRepositoryError } from './errors.js';
+import type { TaskRepositoryError, TaskNotFoundError } from './errors.js';
 
 export interface TaskRepository {
 	create(input: CreateTaskInput): Effect.Effect<Task, TaskRepositoryError>;
 	findAll(): Effect.Effect<Task[], TaskRepositoryError>;
+	toggleCompletion(id: number): Effect.Effect<Task, TaskRepositoryError | TaskNotFoundError>;
 }
 
 export const TaskRepository = Context.GenericTag<TaskRepository>('TaskRepository');

@@ -14,8 +14,8 @@ describe('/demo/tasks page', () => {
 
 	it('renders tasks passed in data prop', async () => {
 		const tasks = [
-			{ id: 1, title: 'Buy milk', priority: 2 },
-			{ id: 2, title: 'Walk dog', priority: 1 }
+			{ id: 1, title: 'Buy milk', priority: 2, completedAt: null },
+			{ id: 2, title: 'Walk dog', priority: 1, completedAt: null }
 		];
 
 		render(TasksPage, { data: { tasks }, form: null });
