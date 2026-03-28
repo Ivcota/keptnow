@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Roadmap — Home Maker Assist</title>
+	<title>Roadmap — KeptNow</title>
 </svelte:head>
 
 <!-- HERO -->
@@ -15,7 +15,7 @@
 			<em class="font-normal italic text-[#c4a46a]">Where we're going.</em>
 		</h1>
 		<p class="text-xl leading-relaxed text-[#9a9088]">
-			Home Maker Assist is being built in phases. Here's what's live — and what's coming next.
+			KeptNow is being built in phases. Here's what's live — and what's coming next.
 		</p>
 	</div>
 </section>
@@ -206,7 +206,7 @@
 							</h2>
 						</div>
 						<p class="text-sm leading-relaxed text-[#8a8279]">
-							Open Home Maker Assist to the tools and services you already use. Features TBD.
+							Open KeptNow to the tools and services you already use. Features TBD.
 						</p>
 					</div>
 				</div>

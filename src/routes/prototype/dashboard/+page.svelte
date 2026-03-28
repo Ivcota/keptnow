@@ -69,7 +69,7 @@
 	<nav class="sticky top-0 z-50 border-b border-[#c4a46a26] bg-[#211f1b]">
 		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
 			<h1 class="font-[Cormorant_Garamond,serif] text-xl font-bold tracking-wide text-[#c4a46a]">
-				Home Maker
+				KeptNow
 			</h1>
 			<div class="flex items-center gap-1">
 				{#each navItems as item}

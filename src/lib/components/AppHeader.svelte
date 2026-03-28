@@ -22,7 +22,7 @@
 			href="/inventory"
 			class="font-[Cormorant_Garamond,serif] text-xl font-bold tracking-wide text-[#1a1714] transition-colors hover:text-[#c4a46a]"
 		>
-			Home Maker Assist
+			KeptNow
 		</a>
 
 		<!-- User menu -->

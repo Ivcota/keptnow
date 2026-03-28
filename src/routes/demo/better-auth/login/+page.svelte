@@ -11,7 +11,7 @@
 	<div class="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-[#1a1714] via-[#252018] to-[#2a2520] p-12 lg:flex">
 		<div>
 			<h1 class="font-[Cormorant_Garamond,serif] text-2xl font-bold tracking-wide text-[#c4a46a]">
-				Home Maker Assist
+				KeptNow
 			</h1>
 		</div>
 		<div class="relative">
@@ -25,7 +25,7 @@
 				Stay on top of tasks, routines, and everything that keeps your household running smoothly.
 			</p>
 		</div>
-		<p class="text-sm text-[#6b6560]">&copy; 2026 Home Maker Assist</p>
+		<p class="text-sm text-[#6b6560]">&copy; 2026 KeptNow</p>
 	</div>
 
 	<!-- Right: Form Panel -->
@@ -33,7 +33,7 @@
 		<div class="w-full max-w-sm">
 			<!-- Mobile logo -->
 			<h1 class="mb-8 text-center font-[Cormorant_Garamond,serif] text-2xl font-bold tracking-wide text-[#1a1714] lg:hidden">
-				Home Maker Assist
+				KeptNow
 			</h1>
 
 			<!-- Mode toggle -->
@@ -64,7 +64,7 @@
 			<p class="mb-6 text-sm text-[#8a8279]">
 				{mode === 'signin'
 					? 'Enter your credentials to access your dashboard.'
-					: 'Get started with Home Maker Assist today.'}
+					: 'Get started with KeptNow today.'}
 			</p>
 
 			<form

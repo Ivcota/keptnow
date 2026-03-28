@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Home Maker Assist — Your Household, Organized</title>
+	<title>KeptNow — Your Household, Organized</title>
 </svelte:head>
 
 <!-- HERO -->
@@ -22,7 +22,7 @@
 			<em class="font-normal italic text-[#c4a46a]">finally organized.</em>
 		</h1>
 		<p class="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-[#9a9088] sm:text-xl">
-			Home Maker Assist brings intelligent task coordination, AI-powered planning, and whole-home
+			KeptNow brings intelligent task coordination, AI-powered planning, and whole-home
 			inventory management into one calm, beautiful space.
 		</p>
 		<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -71,7 +71,7 @@
 					One place for everything that matters.
 				</h2>
 				<p class="mb-4 text-base leading-relaxed text-[#5a5248]">
-					Home Maker Assist is designed from the ground up for household management — not adapted
+					KeptNow is designed from the ground up for household management — not adapted
 					from a work productivity tool. It understands the rhythm of domestic life.
 				</p>
 				<p class="text-base leading-relaxed text-[#5a5248]">
@@ -185,7 +185,7 @@
 				</h3>
 				<p class="text-sm leading-relaxed text-[#7a756e]">
 					Connect your household to the tools you already use. Calendar sync, recipe APIs, smart
-					home devices — Home Maker Assist becomes the hub that ties it all together.
+					home devices — KeptNow becomes the hub that ties it all together.
 				</p>
 				<span class="mt-4 inline-block text-xs font-semibold tracking-[0.15em] text-[#c4a46a]">PLANNED</span>
 			</article>
@@ -224,7 +224,7 @@
 			Ready to take back your home?
 		</h2>
 		<p class="mb-10 text-base leading-relaxed text-[#9a9088]">
-			Join during early access and help shape what Home Maker Assist becomes. Your feedback
+			Join during early access and help shape what KeptNow becomes. Your feedback
 			directly influences what we build next.
 		</p>
 		<a

@@ -11,7 +11,7 @@
 	<nav class="border-b border-[#e8e2d9] bg-white">
 		<div class="mx-auto flex max-w-5xl items-center px-6 py-4">
 			<h1 class="font-[Cormorant_Garamond,serif] text-xl font-bold tracking-wide text-[#1a1714]">
-				Home Maker Assist
+				KeptNow
 			</h1>
 			<span class="ml-3 rounded-md bg-[#eee9e2] px-2 py-0.5 text-xs font-medium text-[#8a8279]">demos</span>
 		</div>

@@ -27,7 +27,7 @@
 					&larr; Demos
 				</a>
 				<h1 class="font-[Cormorant_Garamond,serif] text-xl font-bold tracking-wide text-[#1a1714]">
-					Home Maker Assist
+					KeptNow
 				</h1>
 			</div>
 			<div class="flex items-center gap-4">

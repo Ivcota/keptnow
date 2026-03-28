@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>About — Home Maker Assist</title>
+	<title>About — KeptNow</title>
 </svelte:head>
 
 <!-- HERO -->
@@ -14,7 +14,7 @@
 			Built by someone who knows the mental load is real.
 		</h1>
 		<p class="text-xl leading-relaxed text-[#9a9088]">
-			Home Maker Assist started as a personal frustration. It became a mission.
+			KeptNow started as a personal frustration. It became a mission.
 		</p>
 	</div>
 </section>
@@ -41,7 +41,7 @@
 			</p>
 
 			<p class="mb-6 text-base leading-relaxed text-[#5a5248]">
-				Home Maker Assist was born from the conviction that this work deserves proper tooling —
+				KeptNow was born from the conviction that this work deserves proper tooling —
 				thoughtfully designed, quietly powerful, and built around how homes actually work. Not how
 				offices work, adapted for home use. A tool designed from scratch for the people who keep
 				households running.
@@ -95,7 +95,7 @@
 					Open to the tools you already use.
 				</h3>
 				<p class="text-base leading-relaxed text-[#7a756e]">
-					Through MCP and open integrations, Home Maker Assist is designed to become the hub of your
+					Through MCP and open integrations, KeptNow is designed to become the hub of your
 					domestic digital life — not a silo that demands you abandon everything else. Connect your
 					calendar, your smart home, your grocery delivery service.
 				</p>
