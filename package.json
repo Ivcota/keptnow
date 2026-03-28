@@ -19,7 +19,9 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
+		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
+		"sandcastle": "npx tsx .sandcastle/main.ts",
+		"sandcastle:logs": "tail -f $(ls -t .sandcastle/logs/*.log | head -1)"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
@@ -56,5 +58,8 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"@ai-hero/sandcastle": "^0.1.6"
 	}
 }
