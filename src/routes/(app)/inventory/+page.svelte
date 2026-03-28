@@ -6,12 +6,12 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	type TabId = 'all' | StorageLocation | 'trash';
+	type TabId = 'all' | StorageLocation | 'trash' | 'restock';
 
 	let activeTab = $state<TabId>('all');
 	let addTrackingType = $state('count');
 	let addStorageLocation = $derived<StorageLocation>(
-		activeTab === 'all' || activeTab === 'trash' ? 'pantry' : activeTab
+		activeTab === 'all' || activeTab === 'trash' || activeTab === 'restock' ? 'pantry' : activeTab
 	);
 	let addName = $state('');
 	let addAmount = $state('');
@@ -58,7 +58,8 @@
 		{ id: 'pantry', label: 'Pantry' },
 		{ id: 'fridge', label: 'Fridge' },
 		{ id: 'freezer', label: 'Freezer' },
-		{ id: 'trash', label: 'Trash' }
+		{ id: 'trash', label: 'Trash' },
+		{ id: 'restock', label: 'Restock' }
 	];
 
 	const filteredItems = $derived(
@@ -210,12 +211,59 @@
 							{data.trashedItems.length}
 						</span>
 					{/if}
+					{#if tab.id === 'restock' && data.restockItems.length > 0}
+						<span
+							class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-[#1a1714]"
+							style="background-color: #c4a46a;"
+						>
+							{data.restockItems.length}
+						</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
 
+		<!-- Restock tab content -->
+		{#if activeTab === 'restock'}
+			{#if data.restockItems.length === 0}
+				<p class="mb-10 text-sm text-[#8a8279]">Nothing needs restocking right now.</p>
+			{:else}
+				<section class="mb-10">
+					<ul class="divide-y divide-[#e8e2d9] rounded-xl border border-[#e8e2d9] bg-white">
+						{#each data.restockItems as restockItem (restockItem.foodItem.id)}
+							{@const statusColors = {
+								expired: 'bg-red-100 text-red-700 border-red-200',
+								'expiring-soon': 'bg-yellow-100 text-yellow-700 border-yellow-200'
+							}}
+							{@const statusLabels = {
+								expired: 'Expired',
+								'expiring-soon': 'Expiring soon'
+							}}
+							<li class="flex items-center gap-3 px-4 py-3">
+								<span
+									class="font-medium text-[#1a1714]"
+								>{restockItem.foodItem.name}</span>
+								<span
+									class="rounded-full border px-2 py-0.5 text-xs font-medium {statusColors[restockItem.expirationStatus]}"
+								>
+									{statusLabels[restockItem.expirationStatus]}
+								</span>
+								<a
+									href={restockItem.walmartUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="ml-auto text-xs font-semibold text-[#c4a46a] hover:underline"
+								>
+									Buy on Walmart
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+
 		<!-- Trash tab content -->
-		{#if activeTab === 'trash'}
+		{:else if activeTab === 'trash'}
 			{#if data.trashedItems.length === 0}
 				<p class="mb-10 text-sm text-[#8a8279]">No recently trashed items.</p>
 			{:else}

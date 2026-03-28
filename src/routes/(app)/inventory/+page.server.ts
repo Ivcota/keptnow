@@ -11,6 +11,8 @@ import {
 	findTrashedFoodItems
 } from '$lib/domain/inventory/use-cases';
 import type { StorageLocation, TrackingType } from '$lib/domain/inventory/food-item';
+import { getRestockItems } from '$lib/domain/inventory/restock';
+import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
@@ -22,7 +24,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		appRuntime.runPromise(findAllFoodItems(userId).pipe(Effect.orDie)),
 		appRuntime.runPromise(findTrashedFoodItems(userId).pipe(Effect.orDie))
 	]);
-	return { items, trashedItems };
+	const restockItems = await Effect.runPromise(
+		getRestockItems(items, DEFAULT_EXPIRATION_CONFIG).pipe(Effect.orDie)
+	);
+	return { items, trashedItems, restockItems };
 };
 
 function parseItemFields(formData: FormData) {
