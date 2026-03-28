@@ -15,7 +15,7 @@
 			<em class="font-normal italic text-[#c4a46a]">Where we're going.</em>
 		</h1>
 		<p class="text-xl leading-relaxed text-[#9a9088]">
-			Home Maker Assist is being built in phases. Here's the full plan — and what's live right now.
+			Home Maker Assist is being built in phases. Here's what's live — and what's coming next.
 		</p>
 	</div>
 </section>
@@ -30,14 +30,14 @@
 			></div>
 
 			<div class="space-y-16">
-				<!-- Phase 1: Foundation — CURRENT -->
+				<!-- Phase 1: Foundation — COMPLETE -->
 				<div class="relative flex gap-6 sm:gap-8">
 					<div class="relative flex-shrink-0">
 						<div
-							class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#c4a46a] shadow-[0_0_0_4px_#f8f6f3,0_0_0_6px_#c4a46a66]"
+							class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#6b8f71] shadow-[0_0_0_4px_#f8f6f3,0_0_0_6px_#6b8f7166]"
 						>
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1714" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								<path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41M12 6a6 6 0 100 12 6 6 0 000-12z" />
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="20 6 9 17 4 12" />
 							</svg>
 						</div>
 					</div>
@@ -47,9 +47,9 @@
 								Phase 1: Foundation
 							</h2>
 							<span
-								class="rounded-full bg-[#c4a46a] px-3 py-0.5 text-xs font-semibold tracking-wide text-[#1a1714]"
+								class="rounded-full bg-[#6b8f71] px-3 py-0.5 text-xs font-semibold tracking-wide text-white"
 							>
-								CURRENT PHASE
+								COMPLETE
 							</span>
 						</div>
 						<p class="mb-6 text-sm leading-relaxed text-[#7a756e]">
@@ -59,31 +59,68 @@
 
 						<div class="grid gap-3 sm:grid-cols-2">
 							{#each [
-								{ label: 'User authentication & accounts', status: 'live' },
-								{ label: 'Task creation & management', status: 'live' },
-								{ label: 'Task completion tracking', status: 'live' },
-								{ label: 'Per-user data isolation', status: 'live' },
-								{ label: 'Marketing site & roadmap', status: 'in-progress' },
-								{ label: 'App dashboard shell', status: 'in-progress' }
-							] as feature}
+								'User authentication & accounts',
+								'Task creation & management',
+								'Task completion tracking',
+								'Per-user data isolation',
+								'Marketing site & roadmap',
+								'App dashboard shell'
+							] as label}
 								<div class="flex items-center gap-3 rounded-lg border border-[#e8e2d9] bg-white px-4 py-3">
-									{#if feature.status === 'live'}
-										<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#6b8f71]"></span>
-										<span class="text-sm text-[#3a3632]">{feature.label}</span>
-									{:else if feature.status === 'in-progress'}
-										<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#c4a46a]"></span>
-										<span class="text-sm text-[#3a3632]">{feature.label}</span>
-									{:else}
-										<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#d0ccc7]"></span>
-										<span class="text-sm text-[#8a8279]">{feature.label}</span>
-									{/if}
+									<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#6b8f71]"></span>
+									<span class="text-sm text-[#3a3632]">{label}</span>
 								</div>
 							{/each}
 						</div>
 					</div>
 				</div>
 
-				<!-- Phase 2: AI Assistant -->
+				<!-- Phase 2: Inventory Management — COMPLETE -->
+				<div class="relative flex gap-6 sm:gap-8">
+					<div class="relative flex-shrink-0">
+						<div
+							class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#6b8f71] shadow-[0_0_0_4px_#f8f6f3,0_0_0_6px_#6b8f7166]"
+						>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+						</div>
+					</div>
+					<div class="flex-1 pb-2">
+						<div class="mb-1 flex flex-wrap items-center gap-3">
+							<h2 class="font-[Cormorant_Garamond,serif] text-3xl font-bold text-[#1a1714]">
+								Phase 2: Inventory Management
+							</h2>
+							<span
+								class="rounded-full bg-[#6b8f71] px-3 py-0.5 text-xs font-semibold tracking-wide text-white"
+							>
+								COMPLETE
+							</span>
+						</div>
+						<p class="mb-6 text-sm leading-relaxed text-[#7a756e]">
+							Track food in your home — pantry, fridge, and freezer — with expiration tracking and
+							quick-add workflow.
+						</p>
+
+						<div class="grid gap-3 sm:grid-cols-2">
+							{#each [
+								'Food item tracking by storage location',
+								'Tabbed dashboard (Pantry, Fridge, Freezer)',
+								'Expiration date tracking with status indicators',
+								'Add, edit, and delete items',
+								'Trash and restore workflow',
+								'Quick-add mode for rapid entry'
+							] as label}
+								<div class="flex items-center gap-3 rounded-lg border border-[#e8e2d9] bg-white px-4 py-3">
+									<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#6b8f71]"></span>
+									<span class="text-sm text-[#3a3632]">{label}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+
+				<!-- Phase 3: AI Assistant — NEXT -->
 				<div class="relative flex gap-6 sm:gap-8">
 					<div class="relative flex-shrink-0">
 						<div
@@ -95,7 +132,7 @@
 					<div class="flex-1 pb-2">
 						<div class="mb-1 flex flex-wrap items-center gap-3">
 							<h2 class="font-[Cormorant_Garamond,serif] text-3xl font-bold text-[#3a3632]">
-								Phase 2: AI Assistant
+								Phase 3: AI Assistant
 							</h2>
 							<span
 								class="rounded-full border border-[#c4a46a40] px-3 py-0.5 text-xs font-semibold tracking-wide text-[#8a8279]"
@@ -103,29 +140,13 @@
 								NEXT
 							</span>
 						</div>
-						<p class="mb-6 text-sm leading-relaxed text-[#7a756e]">
-							An AI assistant grounded in your household context — not a generic chatbot.
+						<p class="text-sm leading-relaxed text-[#7a756e]">
+							An AI assistant grounded in your household context — not a generic chatbot. Features TBD.
 						</p>
-
-						<div class="grid gap-3 sm:grid-cols-2">
-							{#each [
-								'Natural language task creation',
-								'Meal planning suggestions',
-								'Smart shopping list generation',
-								'Proactive household reminders',
-								'Context-aware recommendations',
-								'Chat interface in the app'
-							] as label}
-								<div class="flex items-center gap-3 rounded-lg border border-[#e8e2d9] bg-white px-4 py-3 opacity-75">
-									<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#d0ccc7]"></span>
-									<span class="text-sm text-[#8a8279]">{label}</span>
-								</div>
-							{/each}
-						</div>
 					</div>
 				</div>
 
-				<!-- Phase 3: Inventory Management -->
+				<!-- Phase 4: MCP & Integrations -->
 				<div class="relative flex gap-6 sm:gap-8">
 					<div class="relative flex-shrink-0">
 						<div
@@ -137,66 +158,12 @@
 					<div class="flex-1 pb-2">
 						<div class="mb-4">
 							<h2 class="font-[Cormorant_Garamond,serif] text-3xl font-bold text-[#5a5248]">
-								Phase 3: Inventory Management
-							</h2>
-						</div>
-						<p class="mb-6 text-sm leading-relaxed text-[#8a8279]">
-							Track everything in your home — pantry, supplies, appliances — with automatic
-							low-stock alerts.
-						</p>
-
-						<div class="grid gap-3 sm:grid-cols-2">
-							{#each [
-								'Pantry tracking',
-								'Household supply management',
-								'Appliance & warranty registry',
-								'Automatic low-stock alerts',
-								'Barcode scanning support',
-								'AI-powered reorder suggestions'
-							] as label}
-								<div class="flex items-center gap-3 rounded-lg border border-[#eee9e3] bg-[#faf9f7] px-4 py-3 opacity-60">
-									<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#ddd8d2]"></span>
-									<span class="text-sm text-[#9a9088]">{label}</span>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-
-				<!-- Phase 4: MCP & Integrations -->
-				<div class="relative flex gap-6 sm:gap-8">
-					<div class="relative flex-shrink-0">
-						<div
-							class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#c4a46a1a] bg-[#f8f6f3]"
-						>
-							<div class="h-2.5 w-2.5 rounded-full bg-[#c4a46a1a]"></div>
-						</div>
-					</div>
-					<div class="flex-1 pb-2">
-						<div class="mb-4">
-							<h2 class="font-[Cormorant_Garamond,serif] text-3xl font-bold text-[#6b6560]">
 								Phase 4: MCP & Integrations
 							</h2>
 						</div>
-						<p class="mb-6 text-sm leading-relaxed text-[#8a8279]">
-							Open Home Maker Assist to the tools and services you already use. Become the hub.
+						<p class="text-sm leading-relaxed text-[#8a8279]">
+							Open Home Maker Assist to the tools and services you already use. Features TBD.
 						</p>
-
-						<div class="grid gap-3 sm:grid-cols-2">
-							{#each [
-								'Calendar sync (Google, Apple)',
-								'Grocery delivery integration',
-								'Recipe API connections',
-								'Smart home device support',
-								'MCP server for AI agents',
-								'Webhook & automation support'
-							] as label}
-								<div class="flex items-center gap-3 rounded-lg border border-[#eee9e3] bg-[#faf9f7] px-4 py-3 opacity-50">
-									<span class="h-2 w-2 flex-shrink-0 rounded-full bg-[#ddd8d2]"></span>
-									<span class="text-sm text-[#9a9088]">{label}</span>
-								</div>
-							{/each}
-						</div>
 					</div>
 				</div>
 			</div>
@@ -210,12 +177,8 @@
 				<span class="text-xs text-[#5a5248]">Live</span>
 			</div>
 			<div class="flex items-center gap-2">
-				<span class="h-2 w-2 rounded-full bg-[#c4a46a]"></span>
-				<span class="text-xs text-[#5a5248]">In Progress</span>
-			</div>
-			<div class="flex items-center gap-2">
 				<span class="h-2 w-2 rounded-full bg-[#d0ccc7]"></span>
-				<span class="text-xs text-[#5a5248]">Planned</span>
+				<span class="text-xs text-[#5a5248]">TBD</span>
 			</div>
 		</div>
 	</div>
