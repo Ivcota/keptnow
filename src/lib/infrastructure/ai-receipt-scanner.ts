@@ -8,6 +8,31 @@ import { UnreadableImageError, NoItemsExtractedError, AIProviderError } from '$l
 import type { ExtractionError } from '$lib/domain/receipt/errors.js';
 import type { ExtractedFoodItem } from '$lib/domain/receipt/types.js';
 
+export interface RawExtractedItem {
+	name: string;
+	storageLocation: 'pantry' | 'fridge' | 'freezer';
+	trackingType: 'amount' | 'count';
+	quantity: number | null;
+	amount: number | null;
+	daysToExpiration: number | null;
+}
+
+export function mapRawItemToExtracted(item: RawExtractedItem, now: Date = new Date()): ExtractedFoodItem {
+	let expirationDate: Date | null = null;
+	if (item.daysToExpiration != null) {
+		const clamped = Math.max(1, Math.min(item.daysToExpiration, 730));
+		expirationDate = new Date(now.getTime() + clamped * 24 * 60 * 60 * 1000);
+	}
+	return {
+		name: item.name,
+		storageLocation: item.storageLocation,
+		trackingType: item.trackingType,
+		quantity: item.quantity,
+		amount: item.amount,
+		expirationDate
+	};
+}
+
 export function classifyAIError(e: unknown): ExtractionError {
 	if (e instanceof NoItemsExtractedError) return e;
 	if (e instanceof UnreadableImageError) return e;
@@ -25,7 +50,7 @@ const extractedFoodItemSchema = z.object({
 	trackingType: z.enum(['amount', 'count']),
 	quantity: z.number().nullable(),
 	amount: z.number().nullable(),
-	expirationDate: z.string().nullable()
+	daysToExpiration: z.number().nullable()
 });
 
 const SYSTEM_PROMPT = `You are a food item extractor. Extract all food items from the receipt image.
@@ -39,12 +64,12 @@ For each item:
 - trackingType: "count" for discrete items (bottles, boxes, bags, cans), "amount" for items measured by fill level (0–100%)
 - quantity: use the quantity shown on the receipt; default to 1 if not shown
 - amount: null (only set if trackingType is "amount", in which case set to 100)
-- expirationDate: estimate from today based on category:
-  - dairy: 12 days
-  - produce: 6 days
-  - meat/poultry/seafood: 4 days
-  - frozen: 90 days
-  - canned or dry goods: 730 days
+- daysToExpiration: estimate how many days until the item expires, using your judgment per item. Examples for guidance:
+  - dairy: ~12 days
+  - produce: ~6 days
+  - meat/poultry/seafood: ~4 days
+  - frozen: ~90 days
+  - canned or dry goods: ~730 days
   - other: null
 
 Return only items that are clearly food products.`;
@@ -76,10 +101,7 @@ export const AIReceiptScanner = ReceiptScanner.of({
 					]
 				});
 
-				const items: ExtractedFoodItem[] = result.object.map((item) => ({
-					...item,
-					expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
-				}));
+				const items: ExtractedFoodItem[] = result.object.map((item) => mapRawItemToExtracted(item));
 
 				if (items.length === 0) {
 					throw new NoItemsExtractedError();
