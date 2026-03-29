@@ -3,13 +3,13 @@ import { Effect } from 'effect';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import {
-	createRecipe,
 	findAllRecipes,
+	findTrashedRecipes,
+	createRecipe,
 	updateRecipe,
 	trashRecipe,
-	restoreRecipe,
-	findTrashedRecipes
-} from '$lib/domain/recipe/use-cases';
+	restoreRecipe
+} from '$lib/domain/recipe/recipe-service';
 import { findAllFoodItems } from '$lib/domain/inventory/use-cases';
 import type { CreateRecipeIngredientInput } from '$lib/domain/recipe/recipe';
 
@@ -116,15 +116,11 @@ export const actions: Actions = {
 		const userId = locals.user.id;
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
-		const trashedAtRaw = formData.get('trashedAt')?.toString() ?? '';
 
 		if (isNaN(id)) return fail(400, { message: 'Invalid recipe ID' });
 
-		const trashedAt = new Date(trashedAtRaw);
-		if (isNaN(trashedAt.getTime())) return fail(400, { message: 'Invalid trashedAt timestamp' });
-
 		const outcome = await appRuntime.runPromise(
-			Effect.match(restoreRecipe(userId, id, trashedAt), {
+			Effect.match(restoreRecipe(userId, id), {
 				onFailure: (e) => {
 					if (e._tag === 'RecipeNotFoundError') {
 						return { ok: false as const, status: 404 as const, message: `Recipe ${e.id} not found` };
