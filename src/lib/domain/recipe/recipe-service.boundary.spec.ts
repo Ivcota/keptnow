@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 import * as schema from '$lib/server/db/schema.js';
 import { Database, type DatabaseInstance } from '$lib/infrastructure/database.js';
 import { RecipeService, RecipeServiceLive } from './recipe-service.js';
-import { RecipeValidationError, RecipeNotFoundError } from './errors.js';
+import { RecipeValidationError, RecipeNotFoundError, RecipeRestoreExpiredError } from './errors.js';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS "user" (
@@ -369,6 +369,139 @@ describe('RecipeService (boundary — PGLite)', () => {
 			);
 
 			expect(error).toBeInstanceOf(RecipeValidationError);
+		});
+	});
+
+	describe('trash', () => {
+		it('sets trashedAt on the recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'To Trash' })
+				.returning();
+
+			await run(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					yield* svc.trash(USER_A, recipeRow.id);
+				})
+			);
+
+			const [updated] = await db
+				.select()
+				.from(schema.recipe)
+				.where(eq(schema.recipe.id, recipeRow.id));
+			expect(updated.trashedAt).toBeInstanceOf(Date);
+		});
+
+		it('fails with RecipeNotFoundError for non-existent recipe', async () => {
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.trash(USER_A, 99999).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeNotFoundError when trashing another user recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_B, name: 'B Recipe' })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.trash(USER_A, recipeRow.id).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+	});
+
+	describe('restore', () => {
+		it('clears trashedAt within the 24h window', async () => {
+			const recentTrashedAt = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Restorable', trashedAt: recentTrashedAt })
+				.returning();
+
+			await run(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					yield* svc.restore(USER_A, recipeRow.id);
+				})
+			);
+
+			const [updated] = await db
+				.select()
+				.from(schema.recipe)
+				.where(eq(schema.recipe.id, recipeRow.id));
+			expect(updated.trashedAt).toBeNull();
+		});
+
+		it('fails with RecipeRestoreExpiredError when trashedAt is beyond 24h', async () => {
+			const expiredTrashedAt = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25 hours ago
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Expired', trashedAt: expiredTrashedAt })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.restore(USER_A, recipeRow.id).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeRestoreExpiredError);
+		});
+
+		it('fails with RecipeNotFoundError for non-existent recipe', async () => {
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.restore(USER_A, 99999).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeNotFoundError for an active (non-trashed) recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Active' })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.restore(USER_A, recipeRow.id).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeNotFoundError when restoring another user recipe', async () => {
+			const trashedAt = new Date(Date.now() - 60 * 60 * 1000);
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_B, name: 'B Trashed', trashedAt })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.restore(USER_A, recipeRow.id).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
 		});
 	});
 });

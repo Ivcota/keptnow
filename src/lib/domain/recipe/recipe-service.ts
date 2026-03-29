@@ -4,10 +4,13 @@ import type { Recipe, RecipeIngredient, CreateRecipeInput, UpdateRecipeInput } f
 import {
 	RecipeRepositoryError,
 	RecipeValidationError,
-	RecipeNotFoundError
+	RecipeNotFoundError,
+	RecipeRestoreExpiredError
 } from './errors.js';
 import { Database, type DatabaseInstance } from '$lib/infrastructure/database.js';
 import { recipe, recipeIngredient } from '$lib/server/db/schema.js';
+
+export const RESTORE_WINDOW_HOURS = 24;
 
 export interface RecipeService {
 	findAll(userId: string): Effect.Effect<Recipe[], RecipeRepositoryError>;
@@ -20,6 +23,14 @@ export interface RecipeService {
 		userId: string,
 		input: UpdateRecipeInput
 	): Effect.Effect<Recipe, RecipeValidationError | RecipeNotFoundError | RecipeRepositoryError>;
+	trash(
+		userId: string,
+		id: number
+	): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError>;
+	restore(
+		userId: string,
+		id: number
+	): Effect.Effect<void, RecipeNotFoundError | RecipeRestoreExpiredError | RecipeRepositoryError>;
 }
 
 export const RecipeService = Context.GenericTag<RecipeService>('RecipeService');
@@ -212,6 +223,68 @@ export const RecipeServiceLive = Layer.effect(
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to update recipe', cause: e })
 					});
+				}),
+
+			trash: (userId, id) =>
+				Effect.gen(function* () {
+					const rows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select()
+								.from(recipe)
+								.where(and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
+					});
+
+					if (rows.length === 0) {
+						return yield* Effect.fail(new RecipeNotFoundError({ id }));
+					}
+
+					yield* Effect.tryPromise({
+						try: () =>
+							db
+								.update(recipe)
+								.set({ trashedAt: new Date(), updatedAt: new Date() })
+								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to trash recipe', cause: e })
+					});
+				}),
+
+			restore: (userId, id) =>
+				Effect.gen(function* () {
+					const rows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select()
+								.from(recipe)
+								.where(
+									and(eq(recipe.id, id), eq(recipe.userId, userId), isNotNull(recipe.trashedAt))
+								),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to find trashed recipe', cause: e })
+					});
+
+					if (rows.length === 0) {
+						return yield* Effect.fail(new RecipeNotFoundError({ id }));
+					}
+
+					const trashedAt = rows[0].trashedAt!;
+					const hoursElapsed = (Date.now() - trashedAt.getTime()) / (1000 * 60 * 60);
+					if (hoursElapsed > RESTORE_WINDOW_HOURS) {
+						return yield* Effect.fail(new RecipeRestoreExpiredError({ id }));
+					}
+
+					yield* Effect.tryPromise({
+						try: () =>
+							db
+								.update(recipe)
+								.set({ trashedAt: null, updatedAt: new Date() })
+								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to restore recipe', cause: e })
+					});
 				})
 		};
 	})
@@ -253,4 +326,26 @@ export const updateRecipe = (
 	Effect.gen(function* () {
 		const svc = yield* RecipeService;
 		return yield* svc.update(userId, input);
+	});
+
+export const trashRecipe = (
+	userId: string,
+	id: number
+): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError, RecipeService> =>
+	Effect.gen(function* () {
+		const svc = yield* RecipeService;
+		return yield* svc.trash(userId, id);
+	});
+
+export const restoreRecipe = (
+	userId: string,
+	id: number
+): Effect.Effect<
+	void,
+	RecipeNotFoundError | RecipeRestoreExpiredError | RecipeRepositoryError,
+	RecipeService
+> =>
+	Effect.gen(function* () {
+		const svc = yield* RecipeService;
+		return yield* svc.restore(userId, id);
 	});
