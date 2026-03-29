@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import * as schema from '$lib/server/db/schema.js';
 import { Database, type DatabaseInstance } from '$lib/infrastructure/database.js';
+import { DrizzleRecipeRepository } from '$lib/infrastructure/drizzle-recipe-repository.js';
 import { RecipeService, RecipeServiceLive } from './recipe-service.js';
 import { RecipeValidationError, RecipeNotFoundError, RecipeRestoreExpiredError } from './errors.js';
 
@@ -60,7 +61,9 @@ describe('RecipeService (boundary — PGLite)', () => {
 			{ id: USER_B, name: 'User B', email: 'b@example.com' }
 		]);
 
-		testLayer = RecipeServiceLive.pipe(Layer.provide(Layer.succeed(Database, db)));
+		const dbLayer = Layer.succeed(Database, db);
+		const repoLayer = DrizzleRecipeRepository.pipe(Layer.provide(dbLayer));
+		testLayer = RecipeServiceLive.pipe(Layer.provide(repoLayer));
 	});
 
 	const run = <A, E>(effect: Effect.Effect<A, E, RecipeService>) =>
