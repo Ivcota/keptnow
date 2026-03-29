@@ -1,6 +1,7 @@
 import { Effect } from 'effect';
 import { generateObject, NoObjectGeneratedError } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { ANTHROPIC_API_KEY } from '$env/static/private';
 import { z } from 'zod';
 import { ReceiptScanner } from '$lib/domain/receipt/receipt-scanner.js';
 import { UnreadableImageError, NoItemsExtractedError, AIProviderError } from '$lib/domain/receipt/errors.js';
@@ -24,7 +25,7 @@ const extractedFoodItemSchema = z.object({
 	trackingType: z.enum(['amount', 'count']),
 	quantity: z.number().nullable(),
 	amount: z.number().nullable(),
-	expirationDate: z.coerce.date().nullable()
+	expirationDate: z.string().nullable()
 });
 
 const SYSTEM_PROMPT = `You are a food item extractor. Extract all food items from the receipt image.
@@ -53,7 +54,7 @@ export const AIReceiptScanner = ReceiptScanner.of({
 		Effect.tryPromise({
 			try: async () => {
 				const result = await generateObject({
-					model: anthropic('claude-sonnet-4-6'),
+					model: createAnthropic({ apiKey: ANTHROPIC_API_KEY })('claude-sonnet-4-6'),
 					output: 'array',
 					schema: extractedFoodItemSchema,
 					system: SYSTEM_PROMPT,
@@ -75,7 +76,10 @@ export const AIReceiptScanner = ReceiptScanner.of({
 					]
 				});
 
-				const items: ExtractedFoodItem[] = result.object;
+				const items: ExtractedFoodItem[] = result.object.map((item) => ({
+					...item,
+					expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
+				}));
 
 				if (items.length === 0) {
 					throw new NoItemsExtractedError();
