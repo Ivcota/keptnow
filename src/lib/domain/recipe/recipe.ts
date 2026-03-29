@@ -12,6 +12,7 @@ export interface Recipe {
 	userId: string;
 	name: string;
 	ingredients: RecipeIngredient[];
+	trashedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -24,6 +25,12 @@ export interface CreateRecipeIngredientInput {
 }
 
 export interface CreateRecipeInput {
+	name: string;
+	ingredients: CreateRecipeIngredientInput[];
+}
+
+export interface UpdateRecipeInput {
+	id: number;
 	name: string;
 	ingredients: CreateRecipeIngredientInput[];
 }

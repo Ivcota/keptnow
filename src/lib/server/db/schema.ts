@@ -37,6 +37,7 @@ export const recipe = pgTable('recipe', {
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
+	trashedAt: timestamp('trashed_at'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
