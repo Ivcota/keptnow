@@ -1,27 +1,33 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	const checkedIds = $state(new Set<number>());
+	// Optimistic overrides: id → intended checked state, set immediately on click
+	const optimisticOverrides = $state(new Map<number, boolean>());
+
+	// When server data refreshes, clear overrides whose state the server has caught up with
 	$effect(() => {
-		checkedIds.clear();
-		for (const i of data.items) {
-			if (i.checked) checkedIds.add(i.id);
-		}
+		const items = data.items;
+		untrack(() => {
+			for (const [id, optimistic] of optimisticOverrides) {
+				const serverItem = items.find((i) => i.id === id);
+				if (serverItem !== undefined && serverItem.checked === optimistic) {
+					optimisticOverrides.delete(id);
+				}
+			}
+		});
 	});
 
 	function isChecked(id: number): boolean {
-		return checkedIds.has(id);
+		if (optimisticOverrides.has(id)) return optimisticOverrides.get(id)!;
+		return data.items.find((i) => i.id === id)?.checked ?? false;
 	}
 
 	function handleToggle(id: number, nextChecked: boolean) {
-		if (nextChecked) {
-			checkedIds.add(id);
-		} else {
-			checkedIds.delete(id);
-		}
+		optimisticOverrides.set(id, nextChecked);
 	}
 
 	const uncheckedItems = $derived(data.items.filter((i) => !isChecked(i.id)));
@@ -80,7 +86,7 @@
 		)
 	);
 
-	const hasCheckedItems = $derived(checkedIds.size > 0);
+	const hasCheckedItems = $derived(data.items.some((i) => isChecked(i.id)));
 </script>
 
 <svelte:head>
