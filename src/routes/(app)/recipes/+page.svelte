@@ -536,7 +536,7 @@
 											<p class="mt-0.5 text-sm text-[#b0a090] italic">No ingredients</p>
 										{/if}
 									</button>
-									<div class="flex flex-shrink-0 gap-2">
+									<div class="flex flex-shrink-0 items-baseline gap-2">
 										<button
 											onclick={() => startEdit(recipe)}
 											class="text-xs font-semibold text-[#5c4a2a] hover:underline"
