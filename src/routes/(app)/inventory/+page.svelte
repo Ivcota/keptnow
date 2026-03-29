@@ -20,6 +20,7 @@
 	let addExpirationDate = $state('');
 	let editingId = $state<number | null>(null);
 	let editTrackingType = $state('count');
+	let addFormOpen = $state(data.items.length === 0);
 
 	function resetAddForm() {
 		addName = '';
@@ -304,7 +305,7 @@
 			</h2>
 			<p class="max-w-xl text-base leading-relaxed text-[#9a9088]">
 				{data.items.length === 0
-					? 'Nothing in inventory yet. Add your first item below.'
+					? 'Nothing in inventory yet. Add your first item above.'
 					: `${data.items.length} item${data.items.length === 1 ? '' : 's'} in inventory`}
 			</p>
 		</div>
@@ -477,6 +478,304 @@
 				</section>
 			{/if}
 		{:else}
+			<!-- Add Item Form / Receipt Review -->
+			<section class="mb-10 rounded-xl border border-[#e8e2d9] bg-white">
+				<!-- Hidden file input for camera/photo library -->
+				<input
+					bind:this={fileInput}
+					type="file"
+					accept="image/*"
+					capture="environment"
+					class="hidden"
+					onchange={handleFileSelected}
+				/>
+
+				{#if reviewItems.length > 0}
+					<!-- Receipt review list -->
+					<div class="p-6 sm:p-8">
+					<div class="mb-4 flex items-center justify-between">
+						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
+							Review Scanned Items
+						</h3>
+						<button
+							type="button"
+							onclick={() => { reviewItems = []; scanError = null; }}
+							class="text-sm text-[#8a8279] hover:text-[#3a3632]"
+						>
+							Cancel
+						</button>
+					</div>
+
+					<ul class="mb-4 flex flex-col gap-2">
+						{#each reviewItems as item (item.localId)}
+							<li class="flex flex-wrap items-center gap-2 rounded-lg border border-[#e8e2d9] p-3">
+								<input
+									type="checkbox"
+									bind:checked={item.checked}
+									class="h-4 w-4 shrink-0 cursor-pointer accent-[#c4a46a]"
+									aria-label="Include {item.name}"
+								/>
+								<input
+									type="text"
+									bind:value={item.name}
+									class="min-w-24 flex-1 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-1 focus:ring-[#c4a46a33]"
+									aria-label="Name"
+								/>
+								<select
+									bind:value={item.storageLocation}
+									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+									aria-label="Storage location"
+								>
+									<option value="pantry">Pantry</option>
+									<option value="fridge">Fridge</option>
+									<option value="freezer">Freezer</option>
+								</select>
+								<select
+									bind:value={item.trackingType}
+									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+									aria-label="Tracking type"
+								>
+									<option value="count">Count</option>
+									<option value="amount">Amount %</option>
+								</select>
+								{#if item.trackingType === 'amount'}
+									<input
+										type="number"
+										bind:value={item.amount}
+										min="0"
+										max="100"
+										placeholder="%"
+										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+										aria-label="Amount"
+									/>
+								{:else}
+									<input
+										type="number"
+										bind:value={item.quantity}
+										min="1"
+										placeholder="qty"
+										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+										aria-label="Quantity"
+									/>
+								{/if}
+								<input
+									type="date"
+									bind:value={item.expirationDate}
+									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+									aria-label="Expiration date"
+								/>
+							</li>
+						{/each}
+					</ul>
+
+					<form
+						method="post"
+						action="?/bulkCreate"
+						use:enhance={() => {
+							return ({ result, update }) => {
+								if (result.type !== 'failure') {
+									const count = result.type === 'success' && result.data ? (result.data as { count: number }).count : 0;
+									showBulkAddToast(count);
+									reviewItems = [];
+								}
+								update();
+							};
+						}}
+					>
+						<input type="hidden" name="items" value={selectedItemsJson} />
+						<div class="flex items-center gap-4">
+							<button
+								type="submit"
+								disabled={checkedCount === 0}
+								class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+							>
+								Add {checkedCount} Item{checkedCount === 1 ? '' : 's'}
+							</button>
+							{#if form?.message}
+								<p class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
+									{form.message}
+								</p>
+							{/if}
+						</div>
+					</form>
+					</div>
+				{:else}
+					<!-- Collapsible add form header -->
+					<button
+						type="button"
+						onclick={() => (addFormOpen = !addFormOpen)}
+						class="flex w-full items-center justify-between p-6 sm:px-8 sm:py-6"
+					>
+						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
+							Add Item
+						</h3>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="text-[#8a8279] transition-transform duration-200 {addFormOpen ? 'rotate-180' : ''}"
+							aria-hidden="true"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</button>
+
+					{#if addFormOpen}
+					<div class="px-6 pb-6 pt-0 sm:px-8 sm:pb-8">
+						<!-- Scan Receipt button -->
+						<div class="mb-4 flex items-center justify-end">
+							<button
+								type="button"
+								onclick={triggerScan}
+								disabled={scanning}
+								class="text-sm font-medium text-[#c4a46a] transition-colors hover:text-[#d4b87a] disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{scanning ? 'Scanning…' : 'Scan Receipt'}
+							</button>
+						</div>
+
+						<!-- Shimmer loading bar -->
+						{#if scanning}
+							<div class="mb-4 h-1 w-full overflow-hidden rounded-full bg-[#e8e2d9]">
+								<div class="scan-shimmer h-full w-1/3 rounded-full bg-[#c4a46a]"></div>
+							</div>
+						{/if}
+
+						{#if scanError}
+							<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
+								{scanError}
+							</p>
+						{/if}
+
+						<form
+						method="post"
+						action="?/create"
+						use:enhance={() => {
+							return ({ result, update }) => {
+								if (result.type !== 'failure') resetAddForm();
+								update({ reset: false });
+							};
+						}}
+						class="flex flex-col gap-4"
+					>
+						<!-- Name -->
+						<div class="flex flex-col gap-1.5">
+							<label for="name" class="text-sm font-medium text-[#3a3632]">Name</label>
+							<input
+								id="name"
+								type="text"
+								name="name"
+								bind:value={addName}
+								required
+								placeholder="e.g. Milk, Eggs, Pasta"
+								class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] placeholder:text-[#b5aea4] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+							/>
+						</div>
+
+						<div class="grid grid-cols-2 gap-4">
+							<!-- Storage location — pre-selects from active tab, stays after save -->
+							<div class="flex flex-col gap-1.5">
+								<label for="storageLocation" class="text-sm font-medium text-[#3a3632]">
+									Storage Location
+								</label>
+								<select
+									id="storageLocation"
+									name="storageLocation"
+									value={addStorageLocation}
+									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+								>
+									<option value="pantry">Pantry</option>
+									<option value="fridge">Fridge</option>
+									<option value="freezer">Freezer</option>
+								</select>
+							</div>
+
+							<!-- Tracking type -->
+							<div class="flex flex-col gap-1.5">
+								<label for="trackingType" class="text-sm font-medium text-[#3a3632]">Track by</label>
+								<select
+									id="trackingType"
+									name="trackingType"
+									bind:value={addTrackingType}
+									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+								>
+									<option value="count">Count (qty)</option>
+									<option value="amount">Amount (%)</option>
+								</select>
+							</div>
+						</div>
+
+						<!-- Amount or Quantity -->
+						{#if addTrackingType === 'amount'}
+							<div class="flex flex-col gap-1.5">
+								<label for="amount" class="text-sm font-medium text-[#3a3632]">
+									Amount remaining (%)
+								</label>
+								<input
+									id="amount"
+									type="number"
+									name="amount"
+									min="0"
+									max="100"
+									bind:value={addAmount}
+									placeholder="0–100"
+									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+								/>
+							</div>
+						{:else}
+							<div class="flex flex-col gap-1.5">
+								<label for="quantity" class="text-sm font-medium text-[#3a3632]">Quantity</label>
+								<input
+									id="quantity"
+									type="number"
+									name="quantity"
+									min="1"
+									bind:value={addQuantity}
+									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+								/>
+							</div>
+						{/if}
+
+						<!-- Expiration date (optional) -->
+						<div class="flex flex-col gap-1.5">
+							<label for="expirationDate" class="text-sm font-medium text-[#3a3632]">
+								Expiration date <span class="font-normal text-[#8a8279]">(optional)</span>
+							</label>
+							<input
+								id="expirationDate"
+								type="date"
+								name="expirationDate"
+								bind:value={addExpirationDate}
+								class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+							/>
+						</div>
+
+						<div class="flex items-center gap-4">
+							<button
+								type="submit"
+								class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0"
+							>
+								Add Item
+							</button>
+							{#if form?.message}
+								<p
+									class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600"
+								>
+									{form.message}
+								</p>
+							{/if}
+						</div>
+					</form>
+					</div>
+					{/if}
+				{/if}
+			</section>
+
 			<!-- Active items list -->
 			{#if filteredItems.length > 0}
 				<section class="mb-10">
@@ -729,278 +1028,8 @@
 				<p class="mb-10 text-sm text-[#8a8279]">
 					{activeTab === 'all' ? 'No items in inventory.' : `No items in ${activeTab}.`}
 				</p>
-			{/if}
-
-			<!-- Add Item Form / Receipt Review -->
-			<section class="rounded-xl border border-[#e8e2d9] bg-white p-6 sm:p-8">
-				<!-- Hidden file input for camera/photo library -->
-				<input
-					bind:this={fileInput}
-					type="file"
-					accept="image/*"
-					capture="environment"
-					class="hidden"
-					onchange={handleFileSelected}
-				/>
-
-				{#if reviewItems.length > 0}
-					<!-- Receipt review list -->
-					<div class="mb-4 flex items-center justify-between">
-						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
-							Review Scanned Items
-						</h3>
-						<button
-							type="button"
-							onclick={() => { reviewItems = []; scanError = null; }}
-							class="text-sm text-[#8a8279] hover:text-[#3a3632]"
-						>
-							Cancel
-						</button>
-					</div>
-
-					<ul class="mb-4 flex flex-col gap-2">
-						{#each reviewItems as item (item.localId)}
-							<li class="flex flex-wrap items-center gap-2 rounded-lg border border-[#e8e2d9] p-3">
-								<input
-									type="checkbox"
-									bind:checked={item.checked}
-									class="h-4 w-4 shrink-0 cursor-pointer accent-[#c4a46a]"
-									aria-label="Include {item.name}"
-								/>
-								<input
-									type="text"
-									bind:value={item.name}
-									class="min-w-24 flex-1 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-1 focus:ring-[#c4a46a33]"
-									aria-label="Name"
-								/>
-								<select
-									bind:value={item.storageLocation}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Storage location"
-								>
-									<option value="pantry">Pantry</option>
-									<option value="fridge">Fridge</option>
-									<option value="freezer">Freezer</option>
-								</select>
-								<select
-									bind:value={item.trackingType}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Tracking type"
-								>
-									<option value="count">Count</option>
-									<option value="amount">Amount %</option>
-								</select>
-								{#if item.trackingType === 'amount'}
-									<input
-										type="number"
-										bind:value={item.amount}
-										min="0"
-										max="100"
-										placeholder="%"
-										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-										aria-label="Amount"
-									/>
-								{:else}
-									<input
-										type="number"
-										bind:value={item.quantity}
-										min="1"
-										placeholder="qty"
-										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-										aria-label="Quantity"
-									/>
-								{/if}
-								<input
-									type="date"
-									bind:value={item.expirationDate}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Expiration date"
-								/>
-							</li>
-						{/each}
-					</ul>
-
-					<form
-						method="post"
-						action="?/bulkCreate"
-						use:enhance={() => {
-							return ({ result, update }) => {
-								if (result.type !== 'failure') {
-									const count = result.type === 'success' && result.data ? (result.data as { count: number }).count : 0;
-									showBulkAddToast(count);
-									reviewItems = [];
-								}
-								update();
-							};
-						}}
-					>
-						<input type="hidden" name="items" value={selectedItemsJson} />
-						<div class="flex items-center gap-4">
-							<button
-								type="submit"
-								disabled={checkedCount === 0}
-								class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-							>
-								Add {checkedCount} Item{checkedCount === 1 ? '' : 's'}
-							</button>
-							{#if form?.message}
-								<p class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
-									{form.message}
-								</p>
-							{/if}
-						</div>
-					</form>
-				{:else}
-					<!-- Normal add form with Scan Receipt button -->
-					<div class="mb-4 flex items-center justify-between">
-						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
-							Add Item
-						</h3>
-						<button
-							type="button"
-							onclick={triggerScan}
-							disabled={scanning}
-							class="text-sm font-medium text-[#c4a46a] transition-colors hover:text-[#d4b87a] disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{scanning ? 'Scanning…' : 'Scan Receipt'}
-						</button>
-					</div>
-
-					<!-- Shimmer loading bar -->
-					{#if scanning}
-						<div class="mb-4 h-1 w-full overflow-hidden rounded-full bg-[#e8e2d9]">
-							<div class="scan-shimmer h-full w-1/3 rounded-full bg-[#c4a46a]"></div>
-						</div>
-					{/if}
-
-					{#if scanError}
-						<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
-							{scanError}
-						</p>
-					{/if}
-
-					<form
-						method="post"
-						action="?/create"
-						use:enhance={() => {
-							return ({ result, update }) => {
-								if (result.type !== 'failure') resetAddForm();
-								update({ reset: false });
-							};
-						}}
-						class="flex flex-col gap-4"
-					>
-						<!-- Name -->
-						<div class="flex flex-col gap-1.5">
-							<label for="name" class="text-sm font-medium text-[#3a3632]">Name</label>
-							<input
-								id="name"
-								type="text"
-								name="name"
-								bind:value={addName}
-								required
-								placeholder="e.g. Milk, Eggs, Pasta"
-								class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] placeholder:text-[#b5aea4] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-							/>
-						</div>
-
-						<div class="grid grid-cols-2 gap-4">
-							<!-- Storage location — pre-selects from active tab, stays after save -->
-							<div class="flex flex-col gap-1.5">
-								<label for="storageLocation" class="text-sm font-medium text-[#3a3632]">
-									Storage Location
-								</label>
-								<select
-									id="storageLocation"
-									name="storageLocation"
-									value={addStorageLocation}
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								>
-									<option value="pantry">Pantry</option>
-									<option value="fridge">Fridge</option>
-									<option value="freezer">Freezer</option>
-								</select>
-							</div>
-
-							<!-- Tracking type -->
-							<div class="flex flex-col gap-1.5">
-								<label for="trackingType" class="text-sm font-medium text-[#3a3632]">Track by</label>
-								<select
-									id="trackingType"
-									name="trackingType"
-									bind:value={addTrackingType}
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								>
-									<option value="count">Count (qty)</option>
-									<option value="amount">Amount (%)</option>
-								</select>
-							</div>
-						</div>
-
-						<!-- Amount or Quantity -->
-						{#if addTrackingType === 'amount'}
-							<div class="flex flex-col gap-1.5">
-								<label for="amount" class="text-sm font-medium text-[#3a3632]">
-									Amount remaining (%)
-								</label>
-								<input
-									id="amount"
-									type="number"
-									name="amount"
-									min="0"
-									max="100"
-									bind:value={addAmount}
-									placeholder="0–100"
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								/>
-							</div>
-						{:else}
-							<div class="flex flex-col gap-1.5">
-								<label for="quantity" class="text-sm font-medium text-[#3a3632]">Quantity</label>
-								<input
-									id="quantity"
-									type="number"
-									name="quantity"
-									min="1"
-									bind:value={addQuantity}
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								/>
-							</div>
-						{/if}
-
-						<!-- Expiration date (optional) -->
-						<div class="flex flex-col gap-1.5">
-							<label for="expirationDate" class="text-sm font-medium text-[#3a3632]">
-								Expiration date <span class="font-normal text-[#8a8279]">(optional)</span>
-							</label>
-							<input
-								id="expirationDate"
-								type="date"
-								name="expirationDate"
-								bind:value={addExpirationDate}
-								class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm outline-none transition-all duration-200 focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-							/>
-						</div>
-
-						<div class="flex items-center gap-4">
-							<button
-								type="submit"
-								class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0"
-							>
-								Add Item
-							</button>
-							{#if form?.message}
-								<p
-									class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600"
-								>
-									{form.message}
-								</p>
-							{/if}
-						</div>
-					</form>
-				{/if}
-			</section>
 		{/if}
+	{/if}
 </main>
 
 <style>
