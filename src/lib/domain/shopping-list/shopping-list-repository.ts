@@ -1,5 +1,9 @@
 import { Context, Effect } from 'effect';
-import type { ShoppingListItem, RestockShoppingItemInput } from './shopping-list-item.js';
+import type {
+	ShoppingListItem,
+	RestockShoppingItemInput,
+	RecipeShoppingItemInput
+} from './shopping-list-item.js';
 import type {
 	ShoppingListRepositoryError,
 	ShoppingListItemNotFoundError
@@ -10,6 +14,10 @@ export interface ShoppingListRepository {
 	addMissingRestock(
 		userId: string,
 		items: RestockShoppingItemInput[]
+	): Effect.Effect<void, ShoppingListRepositoryError>;
+	mergeRecipeIngredients(
+		userId: string,
+		items: RecipeShoppingItemInput[]
 	): Effect.Effect<void, ShoppingListRepositoryError>;
 	setChecked(
 		userId: string,

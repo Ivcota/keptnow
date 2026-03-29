@@ -41,7 +41,7 @@
 	{#if data.items.length === 0}
 		<div class="rounded-2xl border border-dashed border-[#d8cfc4] bg-white p-10 text-center">
 			<p class="mb-1 text-[#8a7a6a]">Nothing to shop for.</p>
-			<p class="text-sm text-[#b0a090]">Items will appear here when food is expiring.</p>
+			<p class="text-sm text-[#b0a090]">Items will appear here when food is expiring or pinned recipes have missing ingredients.</p>
 		</div>
 	{:else}
 		<div class="flex flex-col gap-2">
@@ -65,7 +65,11 @@
 						></span>
 						<span class="min-w-0 flex-1">
 							<span class="block text-base font-semibold text-[#2c2416]">{item.displayName}</span>
-							{#if item.sourceRecipeNames && item.sourceRecipeNames.length > 0}
+							{#if item.sourceType === 'recipe'}
+								<span class="block text-sm text-[#8a7a6a]">
+									{item.sourceRecipeNames?.join(' · ') ?? ''}
+								</span>
+							{:else if item.sourceRecipeNames && item.sourceRecipeNames.length > 0}
 								<span class="block text-sm text-[#8a7a6a]">
 									Expiring · {item.sourceRecipeNames.join(' · ')}
 								</span>

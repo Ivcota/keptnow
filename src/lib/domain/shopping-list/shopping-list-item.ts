@@ -23,3 +23,11 @@ export interface RestockShoppingItemInput {
 	carriedStorageLocation: StorageLocation;
 	carriedTrackingType: TrackingType;
 }
+
+export interface RecipeShoppingItemInput {
+	canonicalKey: string;
+	displayName: string;
+	sourceRecipeNames: string[];
+	carriedStorageLocation: StorageLocation;
+	carriedTrackingType: TrackingType;
+}
