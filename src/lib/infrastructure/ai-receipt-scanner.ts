@@ -1,10 +1,22 @@
 import { Effect } from 'effect';
-import { generateObject } from 'ai';
+import { generateObject, NoObjectGeneratedError } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { ReceiptScanner } from '$lib/domain/receipt/receipt-scanner.js';
 import { UnreadableImageError, NoItemsExtractedError, AIProviderError } from '$lib/domain/receipt/errors.js';
+import type { ExtractionError } from '$lib/domain/receipt/errors.js';
 import type { ExtractedFoodItem } from '$lib/domain/receipt/types.js';
+
+export function classifyAIError(e: unknown): ExtractionError {
+	if (e instanceof NoItemsExtractedError) return e;
+	if (e instanceof UnreadableImageError) return e;
+	if (NoObjectGeneratedError.isInstance(e)) return new UnreadableImageError();
+	const message = e instanceof Error ? e.message : String(e);
+	if (message.includes('No object generated') || message.includes('NoObjectGenerated')) {
+		return new UnreadableImageError();
+	}
+	return new AIProviderError({ cause: e });
+}
 
 const extractedFoodItemSchema = z.object({
 	name: z.string(),
@@ -71,14 +83,6 @@ export const AIReceiptScanner = ReceiptScanner.of({
 
 				return items;
 			},
-			catch: (e) => {
-				if (e instanceof NoItemsExtractedError) return e;
-				if (e instanceof UnreadableImageError) return e;
-				const message = e instanceof Error ? e.message : String(e);
-				if (message.includes('No object generated') || message.includes('NoObjectGenerated')) {
-					return new UnreadableImageError();
-				}
-				return new AIProviderError({ cause: e });
-			}
+			catch: classifyAIError
 		})
 });
