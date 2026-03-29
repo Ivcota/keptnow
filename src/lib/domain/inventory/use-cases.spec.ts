@@ -29,9 +29,8 @@ const makeFoodItem = (overrides: Partial<FoodItem> = {}): FoodItem => ({
 	name: 'Milk',
 	canonicalName: null,
 	storageLocation: 'fridge',
-	trackingType: 'count',
-	amount: null,
-	quantity: 2,
+	quantity: { value: 2, unit: 'count' },
+	canonicalIngredientId: null,
 	expirationDate: null,
 	trashedAt: null,
 	createdAt: now,
@@ -54,15 +53,13 @@ const makeRepo = (overrides: Partial<typeof FoodItemRepository.Service> = {}) =>
 
 describe('domain/inventory', () => {
 	it('createFoodItem delegates to repository on valid input', async () => {
-		const created = makeFoodItem({ name: 'Eggs', quantity: 12 });
+		const created = makeFoodItem({ name: 'Eggs', quantity: { value: 12, unit: 'count' } });
 
 		const result = await Effect.runPromise(
 			createFoodItem(TEST_USER_ID, {
 				name: 'Eggs',
 				storageLocation: 'fridge',
-				trackingType: 'count',
-				amount: null,
-				quantity: 12,
+				quantity: { value: 12, unit: 'count' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo({ create: () => Effect.succeed(created) })))
 		);
@@ -87,9 +84,7 @@ describe('domain/inventory', () => {
 			createFoodItem(TEST_USER_ID, {
 				name: '',
 				storageLocation: 'pantry',
-				trackingType: 'count',
-				amount: null,
-				quantity: 1,
+				quantity: { value: 1, unit: 'count' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
@@ -98,96 +93,42 @@ describe('domain/inventory', () => {
 		expect((result as FoodItemValidationError).message).toMatch(/empty/i);
 	});
 
-	it('createFoodItem fails when amount is out of range (> 100)', async () => {
+	it('createFoodItem fails when quantity value is zero', async () => {
 		const result = await Effect.runPromise(
 			createFoodItem(TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
-				trackingType: 'amount',
-				amount: 150,
-				quantity: null,
+				quantity: { value: 0, unit: 'ml' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
 
 		expect(result).toBeInstanceOf(FoodItemValidationError);
-		expect((result as FoodItemValidationError).message).toMatch(/0 and 100/i);
+		expect((result as FoodItemValidationError).message).toMatch(/greater than 0/i);
 	});
 
-	it('createFoodItem fails when amount is negative', async () => {
+	it('createFoodItem fails when quantity value is negative', async () => {
 		const result = await Effect.runPromise(
 			createFoodItem(TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
-				trackingType: 'amount',
-				amount: -5,
-				quantity: null,
+				quantity: { value: -5, unit: 'ml' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
 
 		expect(result).toBeInstanceOf(FoodItemValidationError);
-		expect((result as FoodItemValidationError).message).toMatch(/0 and 100/i);
+		expect((result as FoodItemValidationError).message).toMatch(/greater than 0/i);
 	});
 
-	it('createFoodItem fails when amount is missing for amount tracking type', async () => {
-		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
-				name: 'Olive Oil',
-				storageLocation: 'pantry',
-				trackingType: 'amount',
-				amount: null,
-				quantity: null,
-				expirationDate: null
-			}).pipe(Effect.provide(makeRepo()), Effect.flip)
-		);
-
-		expect(result).toBeInstanceOf(FoodItemValidationError);
-		expect((result as FoodItemValidationError).message).toMatch(/amount is required/i);
-	});
-
-	it('createFoodItem fails when quantity is less than 1', async () => {
-		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
-				name: 'Eggs',
-				storageLocation: 'fridge',
-				trackingType: 'count',
-				amount: null,
-				quantity: 0,
-				expirationDate: null
-			}).pipe(Effect.provide(makeRepo()), Effect.flip)
-		);
-
-		expect(result).toBeInstanceOf(FoodItemValidationError);
-		expect((result as FoodItemValidationError).message).toMatch(/at least 1/i);
-	});
-
-	it('createFoodItem fails when quantity is missing for count tracking type', async () => {
-		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
-				name: 'Eggs',
-				storageLocation: 'fridge',
-				trackingType: 'count',
-				amount: null,
-				quantity: null,
-				expirationDate: null
-			}).pipe(Effect.provide(makeRepo()), Effect.flip)
-		);
-
-		expect(result).toBeInstanceOf(FoodItemValidationError);
-		expect((result as FoodItemValidationError).message).toMatch(/quantity is required/i);
-	});
-
-	it('createFoodItem accepts valid amount of 0', async () => {
-		const created = makeFoodItem({ trackingType: 'amount', amount: 0, quantity: null });
+	it('createFoodItem accepts valid volume quantity', async () => {
+		const created = makeFoodItem({ quantity: { value: 473, unit: 'ml' } });
 
 		const result = await Effect.runPromise(
 			createFoodItem(TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
-				trackingType: 'amount',
-				amount: 0,
-				quantity: null,
+				quantity: { value: 473, unit: 'ml' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo({ create: () => Effect.succeed(created) })))
 		);
@@ -195,16 +136,14 @@ describe('domain/inventory', () => {
 		expect(result).toEqual(created);
 	});
 
-	it('createFoodItem accepts valid amount of 100', async () => {
-		const created = makeFoodItem({ trackingType: 'amount', amount: 100, quantity: null });
+	it('createFoodItem accepts valid mass quantity', async () => {
+		const created = makeFoodItem({ quantity: { value: 500, unit: 'g' } });
 
 		const result = await Effect.runPromise(
 			createFoodItem(TEST_USER_ID, {
-				name: 'Olive Oil',
+				name: 'Flour',
 				storageLocation: 'pantry',
-				trackingType: 'amount',
-				amount: 100,
-				quantity: null,
+				quantity: { value: 500, unit: 'g' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo({ create: () => Effect.succeed(created) })))
 		);
@@ -220,9 +159,7 @@ describe('domain/inventory', () => {
 				id: 1,
 				name: 'Oat Milk',
 				storageLocation: 'pantry',
-				trackingType: 'count',
-				amount: null,
-				quantity: 2,
+				quantity: { value: 2, unit: 'count' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo({ update: () => Effect.succeed(updated) })))
 		);
@@ -236,9 +173,7 @@ describe('domain/inventory', () => {
 				id: 1,
 				name: '',
 				storageLocation: 'fridge',
-				trackingType: 'count',
-				amount: null,
-				quantity: 1,
+				quantity: { value: 1, unit: 'count' },
 				expirationDate: null
 			}).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
@@ -253,9 +188,7 @@ describe('domain/inventory', () => {
 				id: 99,
 				name: 'Ghost Item',
 				storageLocation: 'fridge',
-				trackingType: 'count',
-				amount: null,
-				quantity: 1,
+				quantity: { value: 1, unit: 'count' },
 				expirationDate: null
 			}).pipe(
 				Effect.provide(
@@ -309,7 +242,7 @@ describe('domain/inventory', () => {
 
 	it('createFoodItems delegates to repository when all items are valid', async () => {
 		const item1 = makeFoodItem({ id: 1, name: 'Milk' });
-		const item2 = makeFoodItem({ id: 2, name: 'Eggs', quantity: 12 });
+		const item2 = makeFoodItem({ id: 2, name: 'Eggs', quantity: { value: 12, unit: 'count' } });
 		const created = [item1, item2];
 
 		const result = await Effect.runPromise(
@@ -317,17 +250,13 @@ describe('domain/inventory', () => {
 				{
 					name: 'Milk',
 					storageLocation: 'fridge',
-					trackingType: 'count',
-					amount: null,
-					quantity: 2,
+					quantity: { value: 2, unit: 'count' },
 					expirationDate: null
 				},
 				{
 					name: 'Eggs',
 					storageLocation: 'fridge',
-					trackingType: 'count',
-					amount: null,
-					quantity: 12,
+					quantity: { value: 12, unit: 'count' },
 					expirationDate: null
 				}
 			]).pipe(Effect.provide(makeRepo({ bulkCreate: () => Effect.succeed(created) })))
@@ -342,17 +271,13 @@ describe('domain/inventory', () => {
 				{
 					name: 'Milk',
 					storageLocation: 'fridge',
-					trackingType: 'count',
-					amount: null,
-					quantity: 2,
+					quantity: { value: 2, unit: 'count' },
 					expirationDate: null
 				},
 				{
 					name: '',
 					storageLocation: 'pantry',
-					trackingType: 'count',
-					amount: null,
-					quantity: 1,
+					quantity: { value: 1, unit: 'count' },
 					expirationDate: null
 				}
 			]).pipe(Effect.provide(makeRepo()), Effect.flip)
@@ -370,9 +295,7 @@ describe('domain/inventory', () => {
 				{
 					name: 'Bad Item',
 					storageLocation: 'pantry',
-					trackingType: 'amount',
-					amount: 150,
-					quantity: null,
+					quantity: { value: 0, unit: 'ml' },
 					expirationDate: null
 				}
 			]).pipe(

@@ -38,9 +38,8 @@
 		localId: number;
 		name: string;
 		storageLocation: 'pantry' | 'fridge' | 'freezer';
-		trackingType: 'count' | 'amount';
-		quantity: number;
-		amount: number;
+		quantityValue: number;
+		quantityUnit: 'count' | 'ml' | 'g';
 		expirationDate: string;
 	};
 
@@ -59,9 +58,8 @@
 			localId: idx,
 			name: item.displayName,
 			storageLocation: item.carriedStorageLocation,
-			trackingType: item.carriedTrackingType,
-			quantity: 1,
-			amount: 100,
+			quantityValue: 1,
+			quantityUnit: 'count' as const,
 			expirationDate: ''
 		}));
 		showReview = true;
@@ -78,9 +76,7 @@
 				name: item.name,
 				canonicalName: null,
 				storageLocation: item.storageLocation,
-				trackingType: item.trackingType,
-				quantity: item.trackingType === 'count' ? item.quantity : null,
-				amount: item.trackingType === 'amount' ? item.amount : null,
+				quantity: { value: item.quantityValue, unit: item.quantityUnit },
 				expirationDate: item.expirationDate ? item.expirationDate : null
 			}))
 		)
@@ -252,40 +248,28 @@
 								</select>
 							</div>
 							<div class="flex items-center gap-3">
-								<label for="tracking-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Tracking</label>
+								<label for="unit-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Unit</label>
 								<select
-									id="tracking-{item.localId}"
-									bind:value={item.trackingType}
+									id="unit-{item.localId}"
+									bind:value={item.quantityUnit}
 									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
 								>
-									<option value="count">Count</option>
-									<option value="amount">Amount</option>
+									<option value="count">count</option>
+									<option value="ml">ml</option>
+									<option value="g">g</option>
 								</select>
 							</div>
-							{#if item.trackingType === 'count'}
-								<div class="flex items-center gap-3">
-									<label for="qty-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Quantity</label>
-									<input
-										id="qty-{item.localId}"
-										type="number"
-										bind:value={item.quantity}
-										min="1"
-										class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-									/>
-								</div>
-							{:else}
-								<div class="flex items-center gap-3">
-									<label for="amt-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Amount %</label>
-									<input
-										id="amt-{item.localId}"
-										type="number"
-										bind:value={item.amount}
-										min="0"
-										max="100"
-										class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-									/>
-								</div>
-							{/if}
+							<div class="flex items-center gap-3">
+								<label for="qty-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Quantity</label>
+								<input
+									id="qty-{item.localId}"
+									type="number"
+									bind:value={item.quantityValue}
+									min="0.01"
+									step="any"
+									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+								/>
+							</div>
 							<div class="flex items-center gap-3">
 								<label for="exp-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Expires</label>
 								<input

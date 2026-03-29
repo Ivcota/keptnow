@@ -16,9 +16,8 @@ const makeFoodItemRow = (overrides: Partial<FoodItem> = {}): FoodItem => ({
 	name: 'Milk',
 	canonicalName: null,
 	storageLocation: 'fridge',
-	trackingType: 'count',
-	amount: null,
-	quantity: 2,
+	quantity: { value: 2, unit: 'count' },
+	canonicalIngredientId: null,
 	expirationDate: null,
 	trashedAt: null,
 	createdAt: new Date(),
@@ -29,7 +28,7 @@ const makeFoodItemRow = (overrides: Partial<FoodItem> = {}): FoodItem => ({
 describe('DrizzleFoodItemRepository', () => {
 	it('bulkCreate inserts all items in a single transaction and returns them', () => {
 		const row1 = makeFoodItemRow({ id: 1, name: 'Milk' });
-		const row2 = makeFoodItemRow({ id: 2, name: 'Eggs', quantity: 12 });
+		const row2 = makeFoodItemRow({ id: 2, name: 'Eggs', quantity: { value: 12, unit: 'count' } });
 
 		const mockDb = {
 			transaction: (fn: (tx: unknown) => Promise<FoodItem[]>) => {
@@ -49,17 +48,13 @@ describe('DrizzleFoodItemRepository', () => {
 				{
 					name: 'Milk',
 					storageLocation: 'fridge',
-					trackingType: 'count',
-					amount: null,
-					quantity: 2,
+					quantity: { value: 2, unit: 'count' },
 					expirationDate: null
 				},
 				{
 					name: 'Eggs',
 					storageLocation: 'fridge',
-					trackingType: 'count',
-					amount: null,
-					quantity: 12,
+					quantity: { value: 12, unit: 'count' },
 					expirationDate: null
 				}
 			]).pipe(Effect.provide(makeDbLayer(mockDb)))

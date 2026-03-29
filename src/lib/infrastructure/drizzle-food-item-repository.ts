@@ -3,6 +3,7 @@ import { and, eq, isNull, isNotNull, gte } from 'drizzle-orm';
 import { FoodItemRepository } from '$lib/domain/inventory/food-item-repository.js';
 import { FoodItemRepositoryError, FoodItemNotFoundError } from '$lib/domain/inventory/errors.js';
 import type { FoodItem } from '$lib/domain/inventory/food-item.js';
+import type { QuantityUnit } from '$lib/domain/shared/quantity.js';
 import { Database } from './database.js';
 import { foodItem } from '$lib/server/db/schema';
 
@@ -13,9 +14,11 @@ function rowToFoodItem(row: typeof foodItem.$inferSelect): FoodItem {
 		name: row.name,
 		canonicalName: row.canonicalName,
 		storageLocation: row.storageLocation,
-		trackingType: row.trackingType,
-		amount: row.amount !== null ? Number(row.amount) : null,
-		quantity: row.quantity,
+		quantity: {
+			value: Number(row.quantityValue),
+			unit: row.quantityUnit as QuantityUnit
+		},
+		canonicalIngredientId: row.canonicalIngredientId,
 		expirationDate: row.expirationDate,
 		trashedAt: row.trashedAt,
 		createdAt: row.createdAt,
@@ -38,9 +41,8 @@ export const DrizzleFoodItemRepository = Layer.effect(
 								name: input.name,
 								canonicalName: input.canonicalName ?? null,
 								storageLocation: input.storageLocation,
-								trackingType: input.trackingType,
-								amount: input.amount !== null ? String(input.amount) : null,
-								quantity: input.quantity,
+								quantityValue: String(input.quantity.value),
+								quantityUnit: input.quantity.unit,
 								expirationDate: input.expirationDate
 							})
 							.returning()
@@ -60,9 +62,8 @@ export const DrizzleFoodItemRepository = Layer.effect(
 										name: item.name,
 										canonicalName: item.canonicalName ?? null,
 										storageLocation: item.storageLocation,
-										trackingType: item.trackingType,
-										amount: item.amount !== null ? String(item.amount) : null,
-										quantity: item.quantity,
+										quantityValue: String(item.quantity.value),
+										quantityUnit: item.quantity.unit,
 										expirationDate: item.expirationDate
 									}))
 								)
@@ -113,9 +114,8 @@ export const DrizzleFoodItemRepository = Layer.effect(
 									name: input.name,
 									canonicalName: input.canonicalName ?? null,
 									storageLocation: input.storageLocation,
-									trackingType: input.trackingType,
-									amount: input.amount !== null ? String(input.amount) : null,
-									quantity: input.quantity,
+									quantityValue: String(input.quantity.value),
+									quantityUnit: input.quantity.unit,
 									expirationDate: input.expirationDate,
 									updatedAt: new Date()
 								})

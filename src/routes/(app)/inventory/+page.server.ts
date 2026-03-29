@@ -16,9 +16,9 @@ import {
 } from '$lib/domain/inventory/use-cases';
 import type {
 	StorageLocation,
-	TrackingType,
 	CreateFoodItemInput
 } from '$lib/domain/inventory/food-item';
+import type { QuantityUnit } from '$lib/domain/shared/quantity';
 import { getRestockItems } from '$lib/domain/inventory/restock';
 import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration';
 
@@ -52,22 +52,18 @@ function parseItemFields(formData: FormData) {
 	const name = formData.get('name')?.toString() ?? '';
 	const storageLocation = (formData.get('storageLocation')?.toString() ??
 		'pantry') as StorageLocation;
-	const trackingType = (formData.get('trackingType')?.toString() ?? 'count') as TrackingType;
-	const amountRaw = formData.get('amount')?.toString();
-	const quantityRaw = formData.get('quantity')?.toString();
+	const quantityValueRaw = formData.get('quantityValue')?.toString();
+	const quantityUnit = (formData.get('quantityUnit')?.toString() ?? 'count') as QuantityUnit;
 	const expirationDateRaw = formData.get('expirationDate')?.toString();
 
-	const amount = trackingType === 'amount' && amountRaw ? parseFloat(amountRaw) : null;
-	const quantity = trackingType === 'count' && quantityRaw ? parseInt(quantityRaw, 10) : null;
+	const quantityValue = quantityValueRaw ? parseFloat(quantityValueRaw) : 1;
 	const expirationDate = expirationDateRaw ? new Date(expirationDateRaw) : null;
 
 	return {
 		name,
 		canonicalName: null,
 		storageLocation,
-		trackingType,
-		amount,
-		quantity,
+		quantity: { value: quantityValue, unit: quantityUnit },
 		expirationDate
 	};
 }
@@ -236,9 +232,8 @@ export const actions: Actions = {
 			name: string;
 			canonicalName: string | null;
 			storageLocation: string;
-			trackingType: string;
-			quantity: number | null;
-			amount: number | null;
+			quantityValue: number;
+			quantityUnit: string;
 			expirationDate: string | null;
 		}>;
 		try {
@@ -255,9 +250,10 @@ export const actions: Actions = {
 			name: item.name,
 			canonicalName: item.canonicalName ?? null,
 			storageLocation: item.storageLocation as StorageLocation,
-			trackingType: item.trackingType as TrackingType,
-			quantity: item.quantity,
-			amount: item.amount,
+			quantity: {
+				value: item.quantityValue,
+				unit: item.quantityUnit as QuantityUnit
+			},
 			expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
 		}));
 

@@ -15,6 +15,12 @@ import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration.js';
 import { RecipeRepository } from '$lib/domain/recipe/recipe-repository.js';
 import type { RecipeRepositoryError } from '$lib/domain/recipe/errors.js';
 import { matchIngredients } from '$lib/domain/recipe/ingredient-matching.js';
+import type { TrackingType } from '$lib/domain/inventory/food-item.js';
+import type { QuantityUnit } from '$lib/domain/shared/quantity.js';
+
+function unitToTrackingType(unit: QuantityUnit): TrackingType {
+	return unit === 'count' ? 'count' : 'amount';
+}
 
 export const generateShoppingList = (
 	userId: string,
@@ -39,7 +45,7 @@ export const generateShoppingList = (
 			displayName: ri.foodItem.name,
 			sourceRestockItemId: ri.foodItem.id,
 			carriedStorageLocation: ri.foodItem.storageLocation,
-			carriedTrackingType: ri.foodItem.trackingType
+			carriedTrackingType: unitToTrackingType(ri.foodItem.quantity.unit)
 		}));
 
 		// 2. Compute recipe inputs from pinned, non-trashed recipes
@@ -130,9 +136,8 @@ export const completeShoppingTrip = (
 				name: item.displayName,
 				canonicalName: original?.canonicalName ?? null,
 				storageLocation: item.carriedStorageLocation,
-				trackingType: item.carriedTrackingType,
-				amount: item.carriedTrackingType === 'amount' ? 100 : null,
-				quantity: item.carriedTrackingType === 'count' ? 1 : null,
+				// Default to count=1 when restocking; issue #73 will add quantity-aware flow
+				quantity: { value: 1, unit: 'count' },
 				expirationDate: null
 			});
 		}

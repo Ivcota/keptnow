@@ -3,23 +3,22 @@
 	import type { PageData, ActionData } from './$types';
 	import { getExpirationStatus } from '$lib/domain/inventory/expiration.js';
 	import { compressImage } from '$lib/compress-image.js';
-	import type { StorageLocation, TrackingType, FoodItem } from '$lib/domain/inventory/food-item.js';
+	import type { StorageLocation, FoodItem } from '$lib/domain/inventory/food-item.js';
+	import type { QuantityUnit } from '$lib/domain/shared/quantity.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	type TabId = 'all' | StorageLocation | 'trash' | 'restock';
 
 	let activeTab = $state<TabId>('all');
-	let addTrackingType = $state('count');
 	let addStorageLocation = $derived<StorageLocation>(
 		activeTab === 'all' || activeTab === 'trash' || activeTab === 'restock' ? 'pantry' : activeTab
 	);
 	let addName = $state('');
-	let addAmount = $state('');
-	let addQuantity = $state('1');
+	let addQuantityValue = $state('1');
+	let addQuantityUnit = $state<QuantityUnit>('count');
 	let addExpirationDate = $state('');
 	let editingId = $state<number | null>(null);
-	let editTrackingType = $state('count');
 	let addFormOpen = $state(false);
 	$effect(() => {
 		if (data.items.length === 0) addFormOpen = true;
@@ -27,9 +26,8 @@
 
 	function resetAddForm() {
 		addName = '';
-		addTrackingType = 'count';
-		addAmount = '';
-		addQuantity = '1';
+		addQuantityValue = '1';
+		addQuantityUnit = 'count';
 		addExpirationDate = '';
 		// addStorageLocation stays derived from activeTab — no reset needed
 	}
@@ -123,7 +121,6 @@
 
 	function startEdit(item: FoodItem) {
 		editingId = item.id;
-		editTrackingType = item.trackingType;
 	}
 
 	function toDateInputValue(date: Date | null): string {
@@ -138,9 +135,8 @@
 		name: string;
 		canonicalName: string | null;
 		storageLocation: StorageLocation;
-		trackingType: TrackingType;
-		quantity: number | null;
-		amount: number | null;
+		quantityValue: number;
+		quantityUnit: QuantityUnit;
 		expirationDate: string;
 	}
 
@@ -159,9 +155,8 @@
 					name: i.name,
 					canonicalName: i.canonicalName,
 					storageLocation: i.storageLocation,
-					trackingType: i.trackingType,
-					quantity: i.trackingType === 'count' ? (i.quantity ?? 1) : null,
-					amount: i.trackingType === 'amount' ? (i.amount ?? 100) : null,
+					quantityValue: i.quantityValue,
+					quantityUnit: i.quantityUnit,
 					expirationDate: i.expirationDate || null
 				}))
 		)
@@ -207,7 +202,7 @@
 				name: string;
 				canonicalName: string | null;
 				storageLocation: StorageLocation;
-				trackingType: TrackingType;
+				trackingType: 'count' | 'amount';
 				quantity: number | null;
 				amount: number | null;
 				expirationDate: string | null;
@@ -224,9 +219,10 @@
 				name: item.name,
 				canonicalName: item.canonicalName,
 				storageLocation: item.storageLocation,
-				trackingType: item.trackingType,
-				quantity: item.quantity,
-				amount: item.amount,
+				// Receipt scanner still returns trackingType/quantity/amount (issue #72 will update it)
+				// Convert to Quantity: count items use 'count', amount items default to count=1
+				quantityValue: item.trackingType === 'count' ? (item.quantity ?? 1) : 1,
+				quantityUnit: 'count' as QuantityUnit,
 				expirationDate: item.expirationDate
 					? new Date(item.expirationDate).toISOString().split('T')[0]
 					: ''
@@ -565,34 +561,24 @@
 									<option value="fridge">Fridge</option>
 									<option value="freezer">Freezer</option>
 								</select>
+								<input
+									type="number"
+									bind:value={item.quantityValue}
+									min="0.01"
+									step="any"
+									placeholder="qty"
+									class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
+									aria-label="Quantity"
+								/>
 								<select
-									bind:value={item.trackingType}
+									bind:value={item.quantityUnit}
 									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Tracking type"
+									aria-label="Unit"
 								>
-									<option value="count">Count</option>
-									<option value="amount">Amount %</option>
+									<option value="count">count</option>
+									<option value="ml">ml</option>
+									<option value="g">g</option>
 								</select>
-								{#if item.trackingType === 'amount'}
-									<input
-										type="number"
-										bind:value={item.amount}
-										min="0"
-										max="100"
-										placeholder="%"
-										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-										aria-label="Amount"
-									/>
-								{:else}
-									<input
-										type="number"
-										bind:value={item.quantity}
-										min="1"
-										placeholder="qty"
-										class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-										aria-label="Quantity"
-									/>
-								{/if}
 								<input
 									type="date"
 									bind:value={item.expirationDate}
@@ -737,53 +723,35 @@
 									</select>
 								</div>
 
-								<!-- Tracking type -->
+								<!-- Unit -->
 								<div class="flex flex-col gap-1.5">
-									<label for="trackingType" class="text-sm font-medium text-[#3a3632]"
-										>Track by</label
-									>
+									<label for="quantityUnit" class="text-sm font-medium text-[#3a3632]">Unit</label>
 									<select
-										id="trackingType"
-										name="trackingType"
-										bind:value={addTrackingType}
+										id="quantityUnit"
+										name="quantityUnit"
+										bind:value={addQuantityUnit}
 										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
 									>
-										<option value="count">Count (qty)</option>
-										<option value="amount">Amount (%)</option>
+										<option value="count">count</option>
+										<option value="ml">ml</option>
+										<option value="g">g</option>
 									</select>
 								</div>
 							</div>
 
-							<!-- Amount or Quantity -->
-							{#if addTrackingType === 'amount'}
-								<div class="flex flex-col gap-1.5">
-									<label for="amount" class="text-sm font-medium text-[#3a3632]">
-										Amount remaining (%)
-									</label>
-									<input
-										id="amount"
-										type="number"
-										name="amount"
-										min="0"
-										max="100"
-										bind:value={addAmount}
-										placeholder="0–100"
-										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-									/>
-								</div>
-							{:else}
-								<div class="flex flex-col gap-1.5">
-									<label for="quantity" class="text-sm font-medium text-[#3a3632]">Quantity</label>
-									<input
-										id="quantity"
-										type="number"
-										name="quantity"
-										min="1"
-										bind:value={addQuantity}
-										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-									/>
-								</div>
-							{/if}
+							<!-- Quantity value -->
+							<div class="flex flex-col gap-1.5">
+								<label for="quantityValue" class="text-sm font-medium text-[#3a3632]">Quantity</label>
+								<input
+									id="quantityValue"
+									type="number"
+									name="quantityValue"
+									min="0.01"
+									step="any"
+									bind:value={addQuantityValue}
+									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+								/>
+							</div>
 
 							<!-- Expiration date (optional) -->
 							<div class="flex flex-col gap-1.5">
@@ -877,51 +845,36 @@
 										</div>
 
 										<div class="flex flex-col gap-1">
-											<label for="edit-type-{item.id}" class="text-xs font-medium text-[#3a3632]"
-												>Track by</label
+											<label for="edit-unit-{item.id}" class="text-xs font-medium text-[#3a3632]"
+												>Unit</label
 											>
 											<select
-												id="edit-type-{item.id}"
-												name="trackingType"
-												bind:value={editTrackingType}
+												id="edit-unit-{item.id}"
+												name="quantityUnit"
+												value={item.quantity.unit}
 												class="rounded-lg border border-[#ddd6cc] bg-white px-3 py-2 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
 											>
-												<option value="count">Count (qty)</option>
-												<option value="amount">Amount (%)</option>
+												<option value="count">count</option>
+												<option value="ml">ml</option>
+												<option value="g">g</option>
 											</select>
 										</div>
 									</div>
 
-									{#if editTrackingType === 'amount'}
-										<div class="flex flex-col gap-1">
-											<label for="edit-amount-{item.id}" class="text-xs font-medium text-[#3a3632]"
-												>Amount (%)</label
-											>
-											<input
-												id="edit-amount-{item.id}"
-												type="number"
-												name="amount"
-												min="0"
-												max="100"
-												value={item.amount ?? ''}
-												class="rounded-lg border border-[#ddd6cc] bg-white px-3 py-2 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-											/>
-										</div>
-									{:else}
-										<div class="flex flex-col gap-1">
-											<label for="edit-qty-{item.id}" class="text-xs font-medium text-[#3a3632]"
-												>Quantity</label
-											>
-											<input
-												id="edit-qty-{item.id}"
-												type="number"
-												name="quantity"
-												min="1"
-												value={item.quantity ?? 1}
-												class="rounded-lg border border-[#ddd6cc] bg-white px-3 py-2 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-											/>
-										</div>
-									{/if}
+									<div class="flex flex-col gap-1">
+										<label for="edit-qty-{item.id}" class="text-xs font-medium text-[#3a3632]"
+											>Quantity</label
+										>
+										<input
+											id="edit-qty-{item.id}"
+											type="number"
+											name="quantityValue"
+											min="0.01"
+											step="any"
+											value={item.quantity.value}
+											class="rounded-lg border border-[#ddd6cc] bg-white px-3 py-2 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+										/>
+									</div>
 
 									<div class="flex flex-col gap-1">
 										<label for="edit-expiry-{item.id}" class="text-xs font-medium text-[#3a3632]"
@@ -1035,11 +988,9 @@
 								</div>
 
 								<p class="mb-3 text-xs font-medium tracking-[0.1em] text-[#8a8279]">
-									{#if item.trackingType === 'amount'}
-										{item.amount !== null ? `${item.amount}% remaining` : 'Amount not set'}
-									{:else}
-										{item.quantity !== null ? `Qty: ${item.quantity}` : 'Quantity not set'}
-									{/if}
+									{item.quantity.unit === 'count'
+										? `Qty: ${item.quantity.value}`
+										: `${item.quantity.value} ${item.quantity.unit}`}
 								</p>
 
 								{#if item.expirationDate && status}

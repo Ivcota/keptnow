@@ -8,6 +8,7 @@ import {
 	FoodItemRestoreExpiredError
 } from './errors.js';
 import type { FoodItem, CreateFoodItemInput, UpdateFoodItemInput } from './food-item.js';
+import type { Quantity } from '$lib/domain/shared/quantity.js';
 
 export const RESTORE_WINDOW_HOURS = 24;
 
@@ -47,37 +48,16 @@ export const findAllFoodItems = (
 
 function validateFoodItemFields(input: {
 	name: string;
-	trackingType: string;
-	amount: number | null;
-	quantity: number | null;
+	quantity: Quantity;
 }): Effect.Effect<void, FoodItemValidationError> {
 	return Effect.gen(function* () {
 		if (!input.name.trim()) {
 			yield* Effect.fail(new FoodItemValidationError({ message: 'Name must not be empty' }));
 		}
-		if (input.trackingType === 'amount') {
-			if (input.amount === null) {
-				yield* Effect.fail(
-					new FoodItemValidationError({
-						message: 'Amount is required when tracking type is amount'
-					})
-				);
-			} else if (input.amount < 0 || input.amount > 100) {
-				yield* Effect.fail(
-					new FoodItemValidationError({ message: 'Amount must be between 0 and 100' })
-				);
-			}
-		}
-		if (input.trackingType === 'count') {
-			if (input.quantity === null) {
-				yield* Effect.fail(
-					new FoodItemValidationError({
-						message: 'Quantity is required when tracking type is count'
-					})
-				);
-			} else if (input.quantity < 1) {
-				yield* Effect.fail(new FoodItemValidationError({ message: 'Quantity must be at least 1' }));
-			}
+		if (input.quantity.value <= 0) {
+			yield* Effect.fail(
+				new FoodItemValidationError({ message: 'Quantity value must be greater than 0' })
+			);
 		}
 	});
 }

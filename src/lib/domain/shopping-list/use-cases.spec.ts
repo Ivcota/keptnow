@@ -20,9 +20,8 @@ function makeFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
 		name: 'Milk',
 		canonicalName: 'milk',
 		storageLocation: 'fridge',
-		trackingType: 'count',
-		amount: null,
-		quantity: 1,
+		quantity: { value: 2, unit: 'count' },
+		canonicalIngredientId: null,
 		expirationDate: expiredDate,
 		trashedAt: null,
 		createdAt: now,
@@ -112,9 +111,8 @@ const baseFoodItem: FoodItem = {
 	name: 'Milk',
 	canonicalName: 'milk',
 	storageLocation: 'fridge',
-	trackingType: 'count',
-	amount: null,
-	quantity: 2,
+	quantity: { value: 2, unit: 'count' },
+	canonicalIngredientId: null,
 	expirationDate: new Date('2026-04-01'),
 	trashedAt: null,
 	createdAt: now,
@@ -566,38 +564,9 @@ describe('completeShoppingTrip', () => {
 			name: 'Milk',
 			canonicalName: 'milk',
 			storageLocation: 'fridge',
-			trackingType: 'count',
-			quantity: 1,
-			amount: null,
+			quantity: { value: 1, unit: 'count' },
 			expirationDate: null
 		});
-	});
-
-	it('creates replacement with amount=100 for amount-tracked restock items', async () => {
-		const createdInputs: CreateFoodItemInput[] = [];
-		const amountFoodItem: FoodItem = { ...baseFoodItem, trackingType: 'amount', quantity: null, amount: 60 };
-		const amountRestockItem: ShoppingListItem = { ...baseRestockShoppingItem, carriedTrackingType: 'amount' };
-
-		const shoppingListLayer = makeShoppingListRepo({
-			findAll: () => Effect.succeed([amountRestockItem]),
-			clearAll: () => Effect.void
-		});
-		const foodItemLayer = makeFoodItemRepo({
-			findAll: () => Effect.succeed([amountFoodItem]),
-			trash: () => Effect.void,
-			bulkCreate: (_, inputs) => {
-				createdInputs.push(...inputs);
-				return Effect.succeed([]);
-			}
-		});
-
-		await Effect.runPromise(
-			completeShoppingTrip('user-a', []).pipe(
-				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
-			)
-		);
-
-		expect(createdInputs[0]).toMatchObject({ amount: 100, quantity: null });
 	});
 
 	it('bulk-creates recipe items passed as input', async () => {
@@ -606,9 +575,7 @@ describe('completeShoppingTrip', () => {
 			name: 'Flour',
 			canonicalName: null,
 			storageLocation: 'pantry',
-			trackingType: 'count',
-			quantity: 1,
-			amount: null,
+			quantity: { value: 1, unit: 'count' },
 			expirationDate: null
 		};
 
@@ -640,9 +607,7 @@ describe('completeShoppingTrip', () => {
 			name: 'Chicken Breasts',
 			canonicalName: null,
 			storageLocation: 'fridge',
-			trackingType: 'count',
-			quantity: 1,
-			amount: null,
+			quantity: { value: 1, unit: 'count' },
 			expirationDate: null
 		};
 		const recipeShoppingItem: ShoppingListItem = {
@@ -680,9 +645,7 @@ describe('completeShoppingTrip', () => {
 			name: 'Chicken Breasts',
 			canonicalName: 'chicken-breast',
 			storageLocation: 'fridge',
-			trackingType: 'count',
-			quantity: 1,
-			amount: null,
+			quantity: { value: 1, unit: 'count' },
 			expirationDate: null
 		};
 		const recipeShoppingItem: ShoppingListItem = {
@@ -827,9 +790,7 @@ describe('generateShoppingList after completeShoppingTrip (integration)', () => 
 			name: 'Chicken Breasts',
 			canonicalName: null,
 			storageLocation: 'fridge',
-			trackingType: 'count',
-			quantity: 1,
-			amount: null,
+			quantity: { value: 1, unit: 'count' },
 			expirationDate: null
 		};
 
@@ -849,9 +810,8 @@ describe('generateShoppingList after completeShoppingTrip (integration)', () => 
 					name: input.name,
 					canonicalName: input.canonicalName ?? null,
 					storageLocation: input.storageLocation,
-					trackingType: input.trackingType,
-					amount: input.amount,
 					quantity: input.quantity,
+					canonicalIngredientId: null,
 					expirationDate: input.expirationDate,
 					trashedAt: null,
 					createdAt: now,
