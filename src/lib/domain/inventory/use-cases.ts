@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 import { FoodItemRepository } from './food-item-repository.js';
-import { CanonicalNameResolver } from './canonical-name-resolver.js';
+import { CanonicalIngredientResolver } from '$lib/domain/shared/canonical-ingredient-resolver.js';
 import {
 	FoodItemValidationError,
 	FoodItemRepositoryError,
@@ -137,10 +137,10 @@ export const resolveAndPatchCanonicalName = (
 	userId: string,
 	id: number,
 	name: string
-): Effect.Effect<void, Error | FoodItemRepositoryError, CanonicalNameResolver | FoodItemRepository> =>
+): Effect.Effect<void, Error | FoodItemRepositoryError, CanonicalIngredientResolver | FoodItemRepository> =>
 	Effect.gen(function* () {
-		const resolver = yield* CanonicalNameResolver;
-		const canonicalName = yield* resolver.resolve(name);
+		const resolver = yield* CanonicalIngredientResolver;
+		const ingredient = yield* resolver.resolve(name);
 		const repo = yield* FoodItemRepository;
-		yield* repo.patchCanonicalName(userId, id, canonicalName);
+		yield* repo.patchCanonicalName(userId, id, ingredient.name);
 	});

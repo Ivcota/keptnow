@@ -75,4 +75,10 @@ export const shoppingListItem = pgTable('shopping_list_item', {
 	unique().on(t.userId, t.canonicalKey)
 ]);
 
+export const canonicalIngredient = pgTable('canonical_ingredient', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	unitCategory: text('unit_category').notNull()
+});
+
 export * from './auth.schema';

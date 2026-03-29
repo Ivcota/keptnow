@@ -1,15 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Effect, Layer } from 'effect';
-import { CanonicalNameResolver } from './canonical-name-resolver.js';
+import { CanonicalIngredientResolver } from '$lib/domain/shared/canonical-ingredient-resolver.js';
+import type { CanonicalIngredient } from '$lib/domain/shared/canonical-ingredient.js';
 import { FoodItemRepository } from './food-item-repository.js';
 import { resolveAndPatchCanonicalName } from './use-cases.js';
 import { FoodItemRepositoryError } from './errors.js';
 
 const TEST_USER_ID = 'user-1';
 
-const makeResolver = (impl: Partial<typeof CanonicalNameResolver.Service> = {}) =>
-	Layer.succeed(CanonicalNameResolver, {
-		resolve: () => Effect.succeed('milk'),
+const makeIngredient = (overrides: Partial<CanonicalIngredient> = {}): CanonicalIngredient => ({
+	id: 1,
+	name: 'milk',
+	unitCategory: 'volume',
+	...overrides
+});
+
+const makeResolver = (impl: Partial<typeof CanonicalIngredientResolver.Service> = {}) =>
+	Layer.succeed(CanonicalIngredientResolver, {
+		resolve: () => Effect.succeed(makeIngredient()),
 		...impl
 	});
 
@@ -27,12 +35,12 @@ const makeRepo = (impl: Partial<typeof FoodItemRepository.Service> = {}) =>
 	});
 
 describe('resolveAndPatchCanonicalName', () => {
-	it('calls resolver with item name and patches the result', async () => {
+	it('calls resolver with item name and patches the canonical name', async () => {
 		const patchSpy = vi.fn(() => Effect.succeed(undefined as void));
 
 		await Effect.runPromise(
 			resolveAndPatchCanonicalName(TEST_USER_ID, 1, 'Whole Milk').pipe(
-				Effect.provide(makeResolver({ resolve: () => Effect.succeed('milk') })),
+				Effect.provide(makeResolver({ resolve: () => Effect.succeed(makeIngredient({ name: 'milk' })) })),
 				Effect.provide(makeRepo({ patchCanonicalName: patchSpy }))
 			)
 		);
@@ -73,7 +81,7 @@ describe('resolveAndPatchCanonicalName', () => {
 
 		const result = await Effect.runPromise(
 			resolveAndPatchCanonicalName(TEST_USER_ID, 4, 'Butter').pipe(
-				Effect.provide(makeResolver({ resolve: () => Effect.succeed('butter') })),
+				Effect.provide(makeResolver({ resolve: () => Effect.succeed(makeIngredient({ name: 'butter' })) })),
 				Effect.provide(makeRepo({ patchCanonicalName: () => Effect.fail(repoError) })),
 				Effect.flip
 			)

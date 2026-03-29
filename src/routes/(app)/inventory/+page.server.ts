@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 import { auth } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
@@ -14,8 +14,6 @@ import {
 	findTrashedFoodItems,
 	resolveAndPatchCanonicalName
 } from '$lib/domain/inventory/use-cases';
-import { CanonicalNameResolver } from '$lib/domain/inventory/canonical-name-resolver';
-import { AICanonicalNameResolver } from '$lib/infrastructure/ai-canonical-name-resolver';
 import type {
 	StorageLocation,
 	TrackingType,
@@ -105,11 +103,9 @@ export const actions: Actions = {
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
 
 		// Fire-and-forget: resolve canonical name in background
-		const resolverLayer = Layer.succeed(CanonicalNameResolver, AICanonicalNameResolver);
 		appRuntime
 			.runPromise(
 				resolveAndPatchCanonicalName(userId, outcome.item.id, outcome.item.name).pipe(
-					Effect.provide(resolverLayer),
 					Effect.catchAll(() => Effect.void)
 				)
 			)
