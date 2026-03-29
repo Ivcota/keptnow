@@ -7,7 +7,9 @@ import type {
 } from './shopping-list-item.js';
 import type { ShoppingListRepositoryError, ShoppingListItemNotFoundError } from './errors.js';
 import { FoodItemRepository } from '$lib/domain/inventory/food-item-repository.js';
+import { FoodItemNotFoundError } from '$lib/domain/inventory/errors.js';
 import type { FoodItemRepositoryError } from '$lib/domain/inventory/errors.js';
+import type { CreateFoodItemInput } from '$lib/domain/inventory/food-item.js';
 import { getRestockItems } from '$lib/domain/inventory/restock.js';
 import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration.js';
 import { RecipeRepository } from '$lib/domain/recipe/recipe-repository.js';
@@ -93,6 +95,54 @@ export const generateShoppingList = (
 		}
 
 		return yield* shoppingListRepo.findAll(userId);
+	});
+
+export const completeShoppingTrip = (
+	userId: string,
+	recipeItemInputs: CreateFoodItemInput[]
+): Effect.Effect<
+	void,
+	FoodItemRepositoryError | ShoppingListRepositoryError,
+	FoodItemRepository | ShoppingListRepository
+> =>
+	Effect.gen(function* () {
+		const shoppingListRepo = yield* ShoppingListRepository;
+		const foodItemRepo = yield* FoodItemRepository;
+
+		const allItems = yield* shoppingListRepo.findAll(userId);
+		const checkedRestockItems = allItems.filter(
+			(i) => i.checked && i.sourceType === 'restock' && i.sourceRestockItemId !== null
+		);
+
+		const allFoodItems = yield* foodItemRepo.findAll(userId);
+		const foodItemById = new Map(allFoodItems.map((fi) => [fi.id, fi]));
+
+		const restockReplacements: CreateFoodItemInput[] = [];
+		for (const item of checkedRestockItems) {
+			const originalId = item.sourceRestockItemId!;
+			const original = foodItemById.get(originalId);
+			if (original && original.trashedAt === null) {
+				yield* foodItemRepo.trash(userId, originalId).pipe(
+					Effect.catchTag('FoodItemNotFoundError', () => Effect.void)
+				);
+			}
+			restockReplacements.push({
+				name: item.displayName,
+				canonicalName: original?.canonicalName ?? null,
+				storageLocation: item.carriedStorageLocation,
+				trackingType: item.carriedTrackingType,
+				amount: item.carriedTrackingType === 'amount' ? 100 : null,
+				quantity: item.carriedTrackingType === 'count' ? 1 : null,
+				expirationDate: null
+			});
+		}
+
+		const allInputs = [...restockReplacements, ...recipeItemInputs];
+		if (allInputs.length > 0) {
+			yield* foodItemRepo.bulkCreate(userId, allInputs);
+		}
+
+		yield* shoppingListRepo.clearAll(userId);
 	});
 
 export const setShoppingListItemChecked = (

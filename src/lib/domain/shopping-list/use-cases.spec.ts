@@ -4,9 +4,9 @@ import { ShoppingListRepository } from './shopping-list-repository.js';
 import { FoodItemRepository } from '$lib/domain/inventory/food-item-repository.js';
 import { RecipeRepository } from '$lib/domain/recipe/recipe-repository.js';
 import { ShoppingListRepositoryError } from './errors.js';
-import { generateShoppingList } from './use-cases.js';
+import { generateShoppingList, completeShoppingTrip } from './use-cases.js';
 import type { ShoppingListItem, RecipeShoppingItemInput } from './shopping-list-item.js';
-import type { FoodItem } from '$lib/domain/inventory/food-item.js';
+import type { FoodItem, CreateFoodItemInput } from '$lib/domain/inventory/food-item.js';
 import type { Recipe } from '$lib/domain/recipe/recipe.js';
 
 const now = new Date('2026-01-10T12:00:00Z');
@@ -101,9 +101,53 @@ function makeFoodItemRepo(overrides: Partial<FoodItemRepository>): Layer.Layer<F
 		update: noop,
 		trash: noop,
 		restore: noop,
+		patchCanonicalName: noop,
 		...overrides
 	} as FoodItemRepository);
 }
+
+const baseFoodItem: FoodItem = {
+	id: 10,
+	userId: 'user-a',
+	name: 'Milk',
+	canonicalName: 'milk',
+	storageLocation: 'fridge',
+	trackingType: 'count',
+	amount: null,
+	quantity: 2,
+	expirationDate: new Date('2026-04-01'),
+	trashedAt: null,
+	createdAt: now,
+	updatedAt: now
+};
+
+const baseRestockShoppingItem: ShoppingListItem = {
+	id: 1,
+	userId: 'user-a',
+	canonicalKey: 'milk',
+	displayName: 'Milk',
+	checked: true,
+	sourceType: 'restock',
+	sourceRestockItemId: 10,
+	sourceRecipeNames: null,
+	carriedStorageLocation: 'fridge',
+	carriedTrackingType: 'count',
+	createdAt: now
+};
+
+const baseRecipeShoppingItem: ShoppingListItem = {
+	id: 2,
+	userId: 'user-a',
+	canonicalKey: 'flour',
+	displayName: 'Flour',
+	checked: true,
+	sourceType: 'recipe',
+	sourceRestockItemId: null,
+	sourceRecipeNames: ['Bread'],
+	carriedStorageLocation: 'pantry',
+	carriedTrackingType: 'count',
+	createdAt: now
+};
 
 describe('generateShoppingList', () => {
 	it('calls addMissingRestock with restock items derived from expiring food items', async () => {
@@ -466,5 +510,208 @@ describe('generateShoppingList', () => {
 		expect(capturedRecipeItems).toHaveLength(1);
 		expect(capturedRecipeItems![0].canonicalKey).toBe('flour');
 		expect(capturedRecipeItems![0].sourceRecipeNames).toEqual(['Pasta', 'Pancakes']);
+	});
+});
+
+describe('completeShoppingTrip', () => {
+	it('trashes the original food item for checked restock items', async () => {
+		const trashedIds: number[] = [];
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([baseRestockShoppingItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([baseFoodItem]),
+			trash: (_, id) => {
+				trashedIds.push(id);
+				return Effect.void;
+			},
+			bulkCreate: () => Effect.succeed([])
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(trashedIds).toEqual([10]);
+	});
+
+	it('creates a replacement food item for checked restock items with null expiration', async () => {
+		const createdInputs: CreateFoodItemInput[] = [];
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([baseRestockShoppingItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([baseFoodItem]),
+			trash: () => Effect.void,
+			bulkCreate: (_, inputs) => {
+				createdInputs.push(...inputs);
+				return Effect.succeed([]);
+			}
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(createdInputs).toHaveLength(1);
+		expect(createdInputs[0]).toMatchObject({
+			name: 'Milk',
+			canonicalName: 'milk',
+			storageLocation: 'fridge',
+			trackingType: 'count',
+			quantity: 1,
+			amount: null,
+			expirationDate: null
+		});
+	});
+
+	it('creates replacement with amount=100 for amount-tracked restock items', async () => {
+		const createdInputs: CreateFoodItemInput[] = [];
+		const amountFoodItem: FoodItem = { ...baseFoodItem, trackingType: 'amount', quantity: null, amount: 60 };
+		const amountRestockItem: ShoppingListItem = { ...baseRestockShoppingItem, carriedTrackingType: 'amount' };
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([amountRestockItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([amountFoodItem]),
+			trash: () => Effect.void,
+			bulkCreate: (_, inputs) => {
+				createdInputs.push(...inputs);
+				return Effect.succeed([]);
+			}
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(createdInputs[0]).toMatchObject({ amount: 100, quantity: null });
+	});
+
+	it('bulk-creates recipe items passed as input', async () => {
+		const createdInputs: CreateFoodItemInput[] = [];
+		const recipeInput: CreateFoodItemInput = {
+			name: 'Flour',
+			canonicalName: null,
+			storageLocation: 'pantry',
+			trackingType: 'count',
+			quantity: 1,
+			amount: null,
+			expirationDate: null
+		};
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([baseRecipeShoppingItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([]),
+			bulkCreate: (_, inputs) => {
+				createdInputs.push(...inputs);
+				return Effect.succeed([]);
+			}
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', [recipeInput]).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(createdInputs).toContainEqual(recipeInput);
+	});
+
+	it('clears all shopping list items after processing', async () => {
+		let cleared = false;
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([baseRestockShoppingItem]),
+			clearAll: () => {
+				cleared = true;
+				return Effect.void;
+			}
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([baseFoodItem]),
+			trash: () => Effect.void,
+			bulkCreate: () => Effect.succeed([])
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(cleared).toBe(true);
+	});
+
+	it('skips unchecked items — does not trash or replace them', async () => {
+		const trashedIds: number[] = [];
+		const createdInputs: CreateFoodItemInput[] = [];
+		const uncheckedItem: ShoppingListItem = { ...baseRestockShoppingItem, checked: false };
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([uncheckedItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([baseFoodItem]),
+			trash: (_, id) => {
+				trashedIds.push(id);
+				return Effect.void;
+			},
+			bulkCreate: (_, inputs) => {
+				createdInputs.push(...inputs);
+				return Effect.succeed([]);
+			}
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(trashedIds).toHaveLength(0);
+		expect(createdInputs).toHaveLength(0);
+	});
+
+	it('does not trash an already-trashed food item', async () => {
+		const trashedIds: number[] = [];
+		const alreadyTrashed: FoodItem = { ...baseFoodItem, trashedAt: new Date() };
+
+		const shoppingListLayer = makeShoppingListRepo({
+			findAll: () => Effect.succeed([baseRestockShoppingItem]),
+			clearAll: () => Effect.void
+		});
+		const foodItemLayer = makeFoodItemRepo({
+			findAll: () => Effect.succeed([alreadyTrashed]),
+			trash: (_, id) => {
+				trashedIds.push(id);
+				return Effect.void;
+			},
+			bulkCreate: () => Effect.succeed([])
+		});
+
+		await Effect.runPromise(
+			completeShoppingTrip('user-a', []).pipe(
+				Effect.provide(Layer.merge(shoppingListLayer, foodItemLayer))
+			)
+		);
+
+		expect(trashedIds).toHaveLength(0);
 	});
 });

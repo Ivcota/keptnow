@@ -1,11 +1,13 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { Effect } from 'effect';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import {
 	generateShoppingList,
-	setShoppingListItemChecked
+	setShoppingListItemChecked,
+	completeShoppingTrip
 } from '$lib/domain/shopping-list/use-cases';
+import type { CreateFoodItemInput } from '$lib/domain/inventory/food-item';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
@@ -37,5 +39,38 @@ export const actions: Actions = {
 		);
 
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+	},
+
+	completeShopping: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
+		const formData = await request.formData();
+		const recipeItemsRaw = formData.get('recipeItemsJson')?.toString() ?? '[]';
+
+		let recipeItems: CreateFoodItemInput[];
+		try {
+			recipeItems = JSON.parse(recipeItemsRaw);
+			if (!Array.isArray(recipeItems)) throw new Error('Not an array');
+		} catch {
+			return fail(400, { message: 'Invalid recipe items JSON' });
+		}
+
+		// Parse expirationDate strings back to Date objects
+		recipeItems = recipeItems.map((item) => ({
+			...item,
+			expirationDate: item.expirationDate ? new Date(item.expirationDate as unknown as string) : null
+		}));
+
+		const outcome = await appRuntime.runPromise(
+			Effect.match(completeShoppingTrip(userId, recipeItems), {
+				onFailure: () => ({ ok: false as const }),
+				onSuccess: () => ({ ok: true as const })
+			})
+		);
+
+		if (!outcome.ok) return fail(500, { message: 'Failed to complete shopping trip' });
+
+		redirect(303, '/shop');
 	}
 };

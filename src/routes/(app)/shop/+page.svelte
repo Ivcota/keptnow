@@ -20,6 +20,61 @@
 
 	const uncheckedItems = $derived(data.items.filter((i) => !isChecked(i.id)));
 	const checkedItems = $derived(data.items.filter((i) => isChecked(i.id)));
+
+	// Review modal state
+	type ReviewItem = {
+		localId: number;
+		name: string;
+		storageLocation: 'pantry' | 'fridge' | 'freezer';
+		trackingType: 'count' | 'amount';
+		quantity: number;
+		amount: number;
+		expirationDate: string;
+	};
+
+	let showReview = $state(false);
+	let reviewItems = $state<ReviewItem[]>([]);
+
+	function openReviewOrSubmit() {
+		const checkedRecipeItems = checkedItems.filter((i) => i.sourceType === 'recipe');
+		if (checkedRecipeItems.length === 0) {
+			// No recipe items — submit immediately with empty recipe list
+			const form = document.getElementById('complete-form') as HTMLFormElement;
+			form.requestSubmit();
+			return;
+		}
+		reviewItems = checkedRecipeItems.map((item, idx) => ({
+			localId: idx,
+			name: item.displayName,
+			storageLocation: item.carriedStorageLocation,
+			trackingType: item.carriedTrackingType,
+			quantity: 1,
+			amount: 100,
+			expirationDate: ''
+		}));
+		showReview = true;
+	}
+
+	function cancelReview() {
+		showReview = false;
+		reviewItems = [];
+	}
+
+	const recipeItemsJson = $derived(
+		JSON.stringify(
+			reviewItems.map((item) => ({
+				name: item.name,
+				canonicalName: null,
+				storageLocation: item.storageLocation,
+				trackingType: item.trackingType,
+				quantity: item.trackingType === 'count' ? item.quantity : null,
+				amount: item.trackingType === 'amount' ? item.amount : null,
+				expirationDate: item.expirationDate ? item.expirationDate : null
+			}))
+		)
+	);
+
+	const hasCheckedItems = $derived(checkedIds.size > 0);
 </script>
 
 <svelte:head>
@@ -31,7 +86,7 @@
 	/>
 </svelte:head>
 
-<main class="mx-auto max-w-lg px-4 pt-6 pb-24">
+<main class="mx-auto max-w-lg px-4 pt-6 pb-32">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="font-[Cormorant_Garamond,serif] text-3xl font-semibold text-[#2c2416]">
 			Shopping List
@@ -126,4 +181,126 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Hidden complete form -->
+	<form id="complete-form" method="POST" action="?/completeShopping" use:enhance>
+		<input type="hidden" name="recipeItemsJson" value={recipeItemsJson} />
+	</form>
+
+	<!-- Done shopping button -->
+	{#if hasCheckedItems}
+		<div class="fixed bottom-0 left-0 right-0 flex justify-center p-5 pb-8">
+			<button
+				type="button"
+				onclick={openReviewOrSubmit}
+				class="w-full max-w-lg rounded-2xl bg-[#2c2416] px-6 py-4 text-base font-semibold text-white shadow-lg active:bg-[#3d3420]"
+			>
+				Done shopping
+			</button>
+		</div>
+	{/if}
 </main>
+
+<!-- Review modal for recipe items -->
+{#if showReview}
+	<div class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
+		<div class="w-full max-w-lg overflow-hidden rounded-t-3xl bg-white shadow-xl sm:rounded-3xl">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4">
+				<h2 class="font-[Cormorant_Garamond,serif] text-2xl font-semibold text-[#2c2416]">
+					Review Items
+				</h2>
+				<button
+					type="button"
+					onclick={cancelReview}
+					class="rounded-full p-1 text-[#8a7a6a] hover:bg-[#f5f0ea]"
+					aria-label="Cancel"
+				>
+					<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</button>
+			</div>
+
+			<div class="max-h-[60vh] overflow-y-auto px-6 pb-2">
+				{#each reviewItems as item (item.localId)}
+					<div class="mb-4 rounded-2xl border border-[#e8e2d9] bg-[#faf8f5] p-4">
+						<p class="mb-3 text-base font-semibold text-[#2c2416]">{item.name}</p>
+						<div class="flex flex-col gap-2">
+							<div class="flex items-center gap-3">
+								<label for="location-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Location</label>
+								<select
+									id="location-{item.localId}"
+									bind:value={item.storageLocation}
+									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+								>
+									<option value="pantry">Pantry</option>
+									<option value="fridge">Fridge</option>
+									<option value="freezer">Freezer</option>
+								</select>
+							</div>
+							<div class="flex items-center gap-3">
+								<label for="tracking-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Tracking</label>
+								<select
+									id="tracking-{item.localId}"
+									bind:value={item.trackingType}
+									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+								>
+									<option value="count">Count</option>
+									<option value="amount">Amount</option>
+								</select>
+							</div>
+							{#if item.trackingType === 'count'}
+								<div class="flex items-center gap-3">
+									<label for="qty-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Quantity</label>
+									<input
+										id="qty-{item.localId}"
+										type="number"
+										bind:value={item.quantity}
+										min="1"
+										class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+									/>
+								</div>
+							{:else}
+								<div class="flex items-center gap-3">
+									<label for="amt-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Amount %</label>
+									<input
+										id="amt-{item.localId}"
+										type="number"
+										bind:value={item.amount}
+										min="0"
+										max="100"
+										class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+									/>
+								</div>
+							{/if}
+							<div class="flex items-center gap-3">
+								<label for="exp-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Expires</label>
+								<input
+									id="exp-{item.localId}"
+									type="date"
+									bind:value={item.expirationDate}
+									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
+								/>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="px-6 pb-8 pt-4">
+				<button
+					type="button"
+					onclick={() => {
+						showReview = false;
+						const form = document.getElementById('complete-form') as HTMLFormElement;
+						form.requestSubmit();
+					}}
+					class="w-full rounded-2xl bg-[#2c2416] px-6 py-4 text-base font-semibold text-white shadow-sm active:bg-[#3d3420]"
+				>
+					Add {reviewItems.length} item{reviewItems.length === 1 ? '' : 's'} to inventory
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
