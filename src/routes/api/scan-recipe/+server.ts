@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		Effect.match(
 			Effect.gen(function* () {
 				const sc = yield* RecipeScanner;
-				return yield* sc.extractRecipe({ imageBase64, mimeType });
+				return yield* sc.extractRecipes({ imageBase64, mimeType });
 			}).pipe(Effect.provide(scannerLayer)),
 			{
 				onFailure: (e) => {
@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					console.error(e.cause);
 					return { ok: false as const, status: 503 as const };
 				},
-				onSuccess: (recipe) => ({ ok: true as const, recipe })
+				onSuccess: (recipes) => ({ ok: true as const, recipes })
 			}
 		)
 	);
@@ -48,5 +48,5 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(503, 'Something went wrong. Try again in a moment.');
 	}
 
-	return json(outcome.recipe);
+	return json(outcome.recipes);
 };

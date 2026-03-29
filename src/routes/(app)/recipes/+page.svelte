@@ -12,7 +12,7 @@
 
 	let activeTab = $state<TabId>('all');
 
-	// Scanning / review state
+	// Batch scanning state
 	interface ReviewIngredient {
 		localId: number;
 		name: string;
@@ -21,15 +21,22 @@
 		unit: string | null;
 	}
 
+	interface BatchRecipe {
+		batchId: number;
+		name: string;
+		ingredients: ReviewIngredient[];
+	}
+
 	let scanning = $state(false);
+	let scanProgress = $state<{ current: number; total: number } | null>(null);
 	let scanError = $state<string | null>(null);
-	let reviewName = $state('');
-	let reviewIngredients = $state<ReviewIngredient[]>([]);
-	let showReviewForm = $state(false);
+	let batchRecipes = $state<BatchRecipe[]>([]);
+	let showBatchReview = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let nextLocalId = 0;
+	let nextBatchId = 0;
 
-	// Edit state
+	// Edit state (for existing saved recipes)
 	let editingId = $state<number | null>(null);
 	let editName = $state('');
 	let editIngredients = $state<ReviewIngredient[]>([]);
@@ -61,28 +68,6 @@
 		}
 	}
 
-	const ingredientsJsonForReview = $derived(
-		JSON.stringify(
-			reviewIngredients.map((i) => ({
-				name: i.name,
-				canonicalName: i.canonicalName,
-				quantity: i.quantity,
-				unit: i.unit
-			}))
-		)
-	);
-
-	const ingredientsJsonForEdit = $derived(
-		JSON.stringify(
-			editIngredients.map((i) => ({
-				name: i.name,
-				canonicalName: i.canonicalName,
-				quantity: i.quantity,
-				unit: i.unit
-			}))
-		)
-	);
-
 	// Readiness computed for each recipe
 	const recipeReadiness = $derived(
 		new Map(
@@ -93,7 +78,6 @@
 		)
 	);
 
-	// Sort recipes by readiness descending (ready first)
 	const readinessOrder: Record<ReadinessStatus, number> = {
 		ready: 0,
 		'almost-ready': 1,
@@ -106,7 +90,6 @@
 			const rb = recipeReadiness.get(b.id)!;
 			const orderDiff = readinessOrder[ra.status] - readinessOrder[rb.status];
 			if (orderDiff !== 0) return orderDiff;
-			// Secondary sort: more matched first
 			return rb.matched / Math.max(rb.total, 1) - ra.matched / Math.max(ra.total, 1);
 		})
 	);
@@ -122,77 +105,95 @@
 		fileInput?.click();
 	}
 
-	async function handleFileSelected(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (!file) return;
+	async function handleFilesSelected(e: Event) {
+		const files = Array.from((e.target as HTMLInputElement).files ?? []);
+		if (files.length === 0) return;
 
 		scanning = true;
 		scanError = null;
+		scanProgress = { current: 0, total: files.length };
+		const extracted: BatchRecipe[] = [];
 
-		let imageFile: File;
-		try {
-			imageFile = await compressImage(file);
-		} catch {
-			scanError = 'Could not process this image. Try a different photo.';
-			scanning = false;
+		for (let i = 0; i < files.length; i++) {
+			scanProgress = { current: i + 1, total: files.length };
+
+			let imageFile: File;
+			try {
+				imageFile = await compressImage(files[i]);
+			} catch {
+				continue;
+			}
+
+			const body = new FormData();
+			body.append('image', imageFile);
+
+			try {
+				const res = await fetch('/api/scan-recipe', { method: 'POST', body });
+				if (!res.ok) continue;
+
+				const recipes = (await res.json()) as Array<{
+					name: string;
+					ingredients: Array<{
+						name: string;
+						canonicalName: string | null;
+						quantity: string | null;
+						unit: string | null;
+					}>;
+				}>;
+
+				for (const recipe of recipes) {
+					extracted.push({
+						batchId: nextBatchId++,
+						name: recipe.name,
+						ingredients: recipe.ingredients.map((ing) => ({
+							localId: nextLocalId++,
+							name: ing.name,
+							canonicalName: ing.canonicalName,
+							quantity: ing.quantity,
+							unit: ing.unit
+						}))
+					});
+				}
+			} catch {
+				// skip network errors
+			}
+		}
+
+		scanning = false;
+		scanProgress = null;
+		if (fileInput) fileInput.value = '';
+
+		if (extracted.length === 0) {
+			scanError = "Couldn't extract any recipes from the selected photos. Try clearer images.";
 			return;
 		}
 
-		const body = new FormData();
-		body.append('image', imageFile);
-
-		try {
-			const res = await fetch('/api/scan-recipe', { method: 'POST', body });
-
-			if (!res.ok) {
-				scanError =
-					res.status === 422
-						? "Couldn't extract a recipe from this image. Try a clearer photo."
-						: 'Something went wrong. Try again in a moment.';
-				return;
-			}
-
-			const extracted = (await res.json()) as {
-				name: string;
-				ingredients: Array<{
-					name: string;
-					canonicalName: string | null;
-					quantity: string | null;
-					unit: string | null;
-				}>;
-			};
-
-			reviewName = extracted.name;
-			reviewIngredients = extracted.ingredients.map((ing) => ({
-				localId: nextLocalId++,
-				name: ing.name,
-				canonicalName: ing.canonicalName,
-				quantity: ing.quantity,
-				unit: ing.unit
-			}));
-			showReviewForm = true;
-		} catch {
-			scanError = 'Something went wrong. Try again in a moment.';
-		} finally {
-			scanning = false;
-			if (fileInput) fileInput.value = '';
-		}
+		batchRecipes = extracted;
+		showBatchReview = true;
 	}
 
-	function addReviewIngredient() {
-		reviewIngredients.push({ localId: nextLocalId++, name: '', canonicalName: null, quantity: null, unit: null });
+	function discardBatchRecipe(batchId: number) {
+		const idx = batchRecipes.findIndex((r) => r.batchId === batchId);
+		if (idx !== -1) batchRecipes.splice(idx, 1);
+		if (batchRecipes.length === 0) cancelBatch();
 	}
 
-	function removeReviewIngredient(localId: number) {
-		const idx = reviewIngredients.findIndex((i) => i.localId === localId);
-		if (idx !== -1) reviewIngredients.splice(idx, 1);
-	}
-
-	function cancelReview() {
-		showReviewForm = false;
-		reviewName = '';
-		reviewIngredients = [];
+	function cancelBatch() {
+		showBatchReview = false;
+		batchRecipes = [];
 		scanError = null;
+	}
+
+	function addBatchIngredient(batchId: number) {
+		const recipe = batchRecipes.find((r) => r.batchId === batchId);
+		if (recipe) recipe.ingredients.push({ localId: nextLocalId++, name: '', canonicalName: null, quantity: null, unit: null });
+	}
+
+	function removeBatchIngredient(batchId: number, localId: number) {
+		const recipe = batchRecipes.find((r) => r.batchId === batchId);
+		if (!recipe) return;
+		const idx = recipe.ingredients.findIndex((i) => i.localId === localId);
+		if (idx !== -1) recipe.ingredients.splice(idx, 1);
 	}
 
 	function startEdit(recipe: Recipe) {
@@ -221,6 +222,17 @@
 		const idx = editIngredients.findIndex((i) => i.localId === localId);
 		if (idx !== -1) editIngredients.splice(idx, 1);
 	}
+
+	const ingredientsJsonForEdit = $derived(
+		JSON.stringify(
+			editIngredients.map((i) => ({
+				name: i.name,
+				canonicalName: i.canonicalName,
+				quantity: i.quantity,
+				unit: i.unit
+			}))
+		)
+	);
 
 	function toggleExpanded(id: number) {
 		expandedRecipeId = expandedRecipeId === id ? null : id;
@@ -285,7 +297,7 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="font-[Cormorant_Garamond,serif] text-3xl font-semibold text-[#2c2416]">Recipes</h1>
 
-		{#if !showReviewForm && editingId === null}
+		{#if !showBatchReview && editingId === null}
 			<button
 				onclick={triggerScan}
 				disabled={scanning}
@@ -311,10 +323,24 @@
 		bind:this={fileInput}
 		type="file"
 		accept="image/*"
-		capture="environment"
+		multiple
 		class="hidden"
-		onchange={handleFileSelected}
+		onchange={handleFilesSelected}
 	/>
+
+	{#if scanning && scanProgress}
+		<div class="mb-4 rounded-xl border border-[#e8e2d9] bg-white px-4 py-3">
+			<p class="mb-2 text-sm text-[#5c4a2a]">
+				Processing {scanProgress.current} of {scanProgress.total} photo{scanProgress.total === 1 ? '' : 's'}…
+			</p>
+			<div class="h-1.5 w-full overflow-hidden rounded-full bg-[#f0ece6]">
+				<div
+					class="h-full rounded-full bg-[#5c4a2a] transition-all duration-300"
+					style="width: {Math.round((scanProgress.current / scanProgress.total) * 100)}%"
+				></div>
+			</div>
+		</div>
+	{/if}
 
 	{#if scanError}
 		<div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -328,45 +354,77 @@
 		</div>
 	{/if}
 
-	{#if showReviewForm}
-		<!-- New recipe review form -->
-		<div class="rounded-2xl border border-[#e8e2d9] bg-white p-5 shadow-sm">
-			<h2 class="mb-4 font-[Cormorant_Garamond,serif] text-xl font-semibold text-[#2c2416]">
-				Review Recipe
-			</h2>
-			<form
-				method="POST"
-				action="?/create"
-				use:enhance={() => {
-					return ({ update }) => {
-						update({ reset: false }).then(() => {
-							if (!form?.message) cancelReview();
-						});
-					};
-				}}
-			>
-				<div class="mb-4">
-					<label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8a7a6a]">
-						Recipe Name
-					</label>
-					<input
-						name="name"
-						bind:value={reviewName}
-						required
-						class="w-full rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
-					/>
+	{#if showBatchReview}
+		<!-- Batch review -->
+		<div class="mb-3 flex items-center justify-between">
+			<p class="text-sm text-[#8a7a6a]">
+				{batchRecipes.length} recipe{batchRecipes.length === 1 ? '' : 's'} found — review before saving
+			</p>
+			<button onclick={cancelBatch} class="text-xs font-semibold text-[#8a7a6a] hover:underline">
+				Cancel all
+			</button>
+		</div>
+		<div class="flex flex-col gap-4">
+			{#each batchRecipes as batchRecipe (batchRecipe.batchId)}
+				{@const ingredientsJson = JSON.stringify(
+					batchRecipe.ingredients.map((i) => ({
+						name: i.name,
+						canonicalName: i.canonicalName,
+						quantity: i.quantity,
+						unit: i.unit
+					}))
+				)}
+				<div class="rounded-2xl border border-[#e8e2d9] bg-white p-5 shadow-sm">
+					<div class="mb-4 flex items-center justify-between gap-2">
+						<h2 class="font-[Cormorant_Garamond,serif] text-xl font-semibold text-[#2c2416]">
+							Review Recipe
+						</h2>
+						<button
+							type="button"
+							onclick={() => discardBatchRecipe(batchRecipe.batchId)}
+							class="text-xs font-semibold text-red-400 hover:underline"
+						>
+							Discard
+						</button>
+					</div>
+					<form
+						method="POST"
+						action="?/create"
+						use:enhance={() => {
+							return ({ update }) => {
+								update({ reset: false }).then(() => {
+									if (!form?.message) discardBatchRecipe(batchRecipe.batchId);
+								});
+							};
+						}}
+					>
+						<div class="mb-4">
+							<label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8a7a6a]" for="batch-name-{batchRecipe.batchId}">
+								Recipe Name
+							</label>
+							<input
+								id="batch-name-{batchRecipe.batchId}"
+								name="name"
+								bind:value={batchRecipe.name}
+								required
+								class="w-full rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
+							/>
+						</div>
+						{@render ingredientEditor(
+							batchRecipe.ingredients,
+							() => addBatchIngredient(batchRecipe.batchId),
+							(id) => removeBatchIngredient(batchRecipe.batchId, id)
+						)}
+						<input type="hidden" name="ingredients" value={ingredientsJson} />
+						<button
+							type="submit"
+							class="w-full rounded-xl bg-[#5c4a2a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a3a1f]"
+						>
+							Save Recipe
+						</button>
+					</form>
 				</div>
-				{@render ingredientEditor(reviewIngredients, addReviewIngredient, removeReviewIngredient, ingredientsJsonForReview)}
-				<input type="hidden" name="ingredients" value={ingredientsJsonForReview} />
-				<div class="flex gap-2">
-					<button type="button" onclick={cancelReview} class="flex-1 rounded-xl border border-[#e8e2d9] px-4 py-2 text-sm font-semibold text-[#8a7a6a] hover:bg-[#f5f0ea]">
-						Discard
-					</button>
-					<button type="submit" class="flex-1 rounded-xl bg-[#5c4a2a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a3a1f]">
-						Save Recipe
-					</button>
-				</div>
-			</form>
+			{/each}
 		</div>
 	{:else if editingId !== null}
 		<!-- Edit existing recipe -->
@@ -387,17 +445,18 @@
 			>
 				<input type="hidden" name="id" value={editingId} />
 				<div class="mb-4">
-					<label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8a7a6a]">
+					<label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8a7a6a]" for="edit-name">
 						Recipe Name
 					</label>
 					<input
+						id="edit-name"
 						name="name"
 						bind:value={editName}
 						required
 						class="w-full rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
 					/>
 				</div>
-				{@render ingredientEditor(editIngredients, addEditIngredient, removeEditIngredient, ingredientsJsonForEdit)}
+				{@render ingredientEditor(editIngredients, addEditIngredient, removeEditIngredient)}
 				<input type="hidden" name="ingredients" value={ingredientsJsonForEdit} />
 				<div class="flex gap-2">
 					<button type="button" onclick={cancelEdit} class="flex-1 rounded-xl border border-[#e8e2d9] px-4 py-2 text-sm font-semibold text-[#8a7a6a] hover:bg-[#f5f0ea]">
@@ -557,8 +616,7 @@
 {#snippet ingredientEditor(
 	ingredients: ReviewIngredient[],
 	onAdd: () => void,
-	onRemove: (id: number) => void,
-	_json: string
+	onRemove: (id: number) => void
 )}
 	<div class="mb-4">
 		<div class="mb-2 flex items-center justify-between">

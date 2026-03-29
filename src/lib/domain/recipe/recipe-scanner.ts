@@ -19,7 +19,7 @@ export interface ScanRecipeInput {
 }
 
 export interface RecipeScanner {
-	extractRecipe(input: ScanRecipeInput): Effect.Effect<ExtractedRecipe, ExtractionError>;
+	extractRecipes(input: ScanRecipeInput): Effect.Effect<ExtractedRecipe[], ExtractionError>;
 }
 
 export const RecipeScanner = Context.GenericTag<RecipeScanner>('RecipeScanner');

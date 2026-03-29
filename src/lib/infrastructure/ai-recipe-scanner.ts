@@ -30,9 +30,11 @@ const extractedRecipeSchema = z.object({
 	ingredients: z.array(extractedIngredientSchema)
 });
 
-const SYSTEM_PROMPT = `You are a recipe extractor. Extract the recipe from the photographed recipe book page.
+const SYSTEM_PROMPT = `You are a recipe extractor. Extract all recipes from the photographed recipe book page.
 
-For the recipe:
+A page may contain one recipe or multiple recipes. Return all recipes found.
+
+For each recipe:
 - name: The full recipe name as written on the page
 - ingredients: An array of all ingredients listed
 
@@ -42,15 +44,15 @@ For each ingredient:
 - quantity: The quantity as a string (e.g., "2", "1/2", "3–4") or null if not specified
 - unit: The unit of measurement (e.g., "cups", "tbsp", "lbs", "oz") or null if not specified
 
-Extract only the ingredients list. Do not extract recipe instructions.`;
+Extract only the ingredients list for each recipe. Do not extract recipe instructions.`;
 
 export const AIRecipeScanner = RecipeScanner.of({
-	extractRecipe: (input) =>
+	extractRecipes: (input) =>
 		Effect.tryPromise({
 			try: async () => {
 				const result = await generateObject({
 					model: createAnthropic({ apiKey: ANTHROPIC_API_KEY })('claude-sonnet-4-6'),
-					output: 'object',
+					output: 'array',
 					schema: extractedRecipeSchema,
 					system: SYSTEM_PROMPT,
 					messages: [
@@ -64,20 +66,20 @@ export const AIRecipeScanner = RecipeScanner.of({
 								},
 								{
 									type: 'text',
-									text: 'Extract the recipe from this page.'
+									text: 'Extract all recipes from this page.'
 								}
 							]
 						}
 					]
 				});
 
-				const recipe = result.object;
+				const recipes = result.object.filter((r) => r.name.trim());
 
-				if (!recipe.name.trim()) {
+				if (recipes.length === 0) {
 					throw new UnreadableImageError();
 				}
 
-				return recipe;
+				return recipes;
 			},
 			catch: classifyAIError
 		})
