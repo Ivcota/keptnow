@@ -31,6 +31,7 @@ export const actions: Actions = {
 			if (error instanceof APIError) {
 				return fail(400, { message: error.message || 'Signin failed' });
 			}
+			console.error(`[${event.locals.requestId}] signInEmail unexpected error:`, error);
 			return fail(500, { message: 'Unexpected error' });
 		}
 
@@ -56,6 +57,7 @@ export const actions: Actions = {
 			if (error instanceof APIError) {
 				return fail(400, { message: error.message || 'Registration failed' });
 			}
+			console.error(`[${event.locals.requestId}] signUpEmail unexpected error:`, error);
 			return fail(500, { message: 'Unexpected error' });
 		}
 
