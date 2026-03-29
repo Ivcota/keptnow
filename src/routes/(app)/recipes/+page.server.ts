@@ -4,12 +4,14 @@ import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
 import {
 	createRecipe,
-	findAllRecipes,
 	updateRecipe,
 	trashRecipe,
-	restoreRecipe,
-	findTrashedRecipes
+	restoreRecipe
 } from '$lib/domain/recipe/use-cases';
+import {
+	findAllRecipes,
+	findTrashedRecipes
+} from '$lib/domain/recipe/recipe-service';
 import { findAllFoodItems } from '$lib/domain/inventory/use-cases';
 import type { CreateRecipeIngredientInput } from '$lib/domain/recipe/recipe';
 

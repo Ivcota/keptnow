@@ -25,6 +25,7 @@
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
+		"@electric-sql/pglite": "^0.4.2",
 		"@eslint/compat": "^2.0.3",
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-auto": "^7.0.0",
