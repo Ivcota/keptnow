@@ -23,6 +23,7 @@ function rowsToRecipe(
 		userId: recipeRow.userId,
 		name: recipeRow.name,
 		ingredients,
+		pinnedAt: recipeRow.pinnedAt,
 		trashedAt: recipeRow.trashedAt,
 		createdAt: recipeRow.createdAt,
 		updatedAt: recipeRow.updatedAt
@@ -195,7 +196,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 						try: () =>
 							db
 								.update(recipe)
-								.set({ trashedAt: new Date(), updatedAt: new Date() })
+								.set({ pinnedAt: null, trashedAt: new Date(), updatedAt: new Date() })
 								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to trash recipe', cause: e })
@@ -245,6 +246,64 @@ export const DrizzleRecipeRepository = Layer.effect(
 
 					// Return recipe with original trashedAt so the use-case can check the window
 					return originalRecipe;
+				}),
+
+			pin: (userId, id) =>
+				Effect.gen(function* () {
+					const rows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select()
+								.from(recipe)
+								.where(
+									and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+								),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
+					});
+
+					if (rows.length === 0) {
+						return yield* Effect.fail(new RecipeNotFoundError({ id }));
+					}
+
+					yield* Effect.tryPromise({
+						try: () =>
+							db
+								.update(recipe)
+								.set({ pinnedAt: new Date(), updatedAt: new Date() })
+								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to pin recipe', cause: e })
+					});
+				}),
+
+			unpin: (userId, id) =>
+				Effect.gen(function* () {
+					const rows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select()
+								.from(recipe)
+								.where(
+									and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+								),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
+					});
+
+					if (rows.length === 0) {
+						return yield* Effect.fail(new RecipeNotFoundError({ id }));
+					}
+
+					yield* Effect.tryPromise({
+						try: () =>
+							db
+								.update(recipe)
+								.set({ pinnedAt: null, updatedAt: new Date() })
+								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+						catch: (e) =>
+							new RecipeRepositoryError({ message: 'Failed to unpin recipe', cause: e })
+					});
 				})
 		};
 	})

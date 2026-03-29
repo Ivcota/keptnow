@@ -14,7 +14,9 @@ import {
 	createRecipe,
 	updateRecipe,
 	trashRecipe,
-	restoreRecipe
+	restoreRecipe,
+	pinRecipe,
+	unpinRecipe
 } from './use-cases.js';
 
 const SCHEMA_SQL = `
@@ -32,6 +34,7 @@ CREATE TABLE IF NOT EXISTS "recipe" (
   "id" serial PRIMARY KEY NOT NULL,
   "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
   "name" text NOT NULL,
+  "pinned_at" timestamp,
   "trashed_at" timestamp,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
@@ -428,6 +431,69 @@ describe('Recipe use-cases (boundary — PGLite)', () => {
 
 			const error = await Effect.runPromise(
 				restoreRecipe(USER_A, recipeRow.id).pipe(Effect.flip, Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+	});
+
+	describe('pinRecipe', () => {
+		it('sets pinnedAt on the recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Pinnable' })
+				.returning();
+
+			await run(pinRecipe(USER_A, recipeRow.id));
+
+			const [updated] = await db
+				.select()
+				.from(schema.recipe)
+				.where(eq(schema.recipe.id, recipeRow.id));
+			expect(updated.pinnedAt).not.toBeNull();
+		});
+
+		it('fails with RecipeNotFoundError for non-existent recipe', async () => {
+			const error = await Effect.runPromise(
+				pinRecipe(USER_A, 99999).pipe(Effect.flip, Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeNotFoundError for a trashed recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Trashed', trashedAt: new Date() })
+				.returning();
+
+			const error = await Effect.runPromise(
+				pinRecipe(USER_A, recipeRow.id).pipe(Effect.flip, Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+	});
+
+	describe('unpinRecipe', () => {
+		it('clears pinnedAt on the recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Pinned', pinnedAt: new Date() })
+				.returning();
+
+			await run(unpinRecipe(USER_A, recipeRow.id));
+
+			const [updated] = await db
+				.select()
+				.from(schema.recipe)
+				.where(eq(schema.recipe.id, recipeRow.id));
+			expect(updated.pinnedAt).toBeNull();
+		});
+
+		it('fails with RecipeNotFoundError for non-existent recipe', async () => {
+			const error = await Effect.runPromise(
+				unpinRecipe(USER_A, 99999).pipe(Effect.flip, Effect.provide(testLayer))
 			);
 
 			expect(error).toBeInstanceOf(RecipeNotFoundError);

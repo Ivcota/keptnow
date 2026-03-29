@@ -15,6 +15,8 @@ export interface RecipeRepository {
 		userId: string,
 		id: number
 	): Effect.Effect<Recipe, RecipeNotFoundError | RecipeRepositoryError>;
+	pin(userId: string, id: number): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError>;
+	unpin(userId: string, id: number): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError>;
 }
 
 export const RecipeRepository = Context.GenericTag<RecipeRepository>('RecipeRepository');

@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { Effect, Layer } from 'effect';
 import { RecipeRepository } from './recipe-repository.js';
-import { RecipeValidationError, RecipeRestoreExpiredError } from './errors.js';
+import { RecipeValidationError, RecipeRestoreExpiredError, RecipeNotFoundError } from './errors.js';
 import {
 	createRecipe,
 	updateRecipe,
 	restoreRecipe,
+	pinRecipe,
+	unpinRecipe,
 	RESTORE_WINDOW_HOURS
 } from './use-cases.js';
 import type { Recipe } from './recipe.js';
@@ -15,6 +17,7 @@ const baseRecipe: Recipe = {
 	userId: 'user-a',
 	name: 'Test Recipe',
 	ingredients: [],
+	pinnedAt: null,
 	trashedAt: null,
 	createdAt: new Date(),
 	updatedAt: new Date()
@@ -30,6 +33,8 @@ function makeRepo(overrides: Partial<RecipeRepository>): Layer.Layer<RecipeRepos
 		update: noop,
 		trash: noop,
 		restore: noop,
+		pin: noop,
+		unpin: noop,
 		...overrides
 	} as RecipeRepository);
 }
@@ -141,5 +146,67 @@ describe('restoreRecipe', () => {
 			restoreRecipe('user-a', 1, now).pipe(Effect.as('ok'), Effect.provide(layer))
 		);
 		expect(result).toBe('ok');
+	});
+});
+
+describe('pinRecipe', () => {
+	it('calls repo.pin with the correct userId and id', async () => {
+		let capturedUserId: string | null = null;
+		let capturedId: number | null = null;
+		const layer = makeRepo({
+			pin: (userId, id) => {
+				capturedUserId = userId;
+				capturedId = id;
+				return Effect.void;
+			}
+		});
+
+		await Effect.runPromise(pinRecipe('user-a', 42).pipe(Effect.provide(layer)));
+
+		expect(capturedUserId).toBe('user-a');
+		expect(capturedId).toBe(42);
+	});
+
+	it('propagates RecipeNotFoundError from repo', async () => {
+		const layer = makeRepo({
+			pin: (_, id) => Effect.fail(new RecipeNotFoundError({ id }))
+		});
+
+		const error = await Effect.runPromise(
+			pinRecipe('user-a', 42).pipe(Effect.flip, Effect.provide(layer))
+		);
+
+		expect(error).toBeInstanceOf(RecipeNotFoundError);
+	});
+});
+
+describe('unpinRecipe', () => {
+	it('calls repo.unpin with the correct userId and id', async () => {
+		let capturedUserId: string | null = null;
+		let capturedId: number | null = null;
+		const layer = makeRepo({
+			unpin: (userId, id) => {
+				capturedUserId = userId;
+				capturedId = id;
+				return Effect.void;
+			}
+		});
+
+		await Effect.runPromise(unpinRecipe('user-a', 7).pipe(Effect.provide(layer)));
+
+		expect(capturedUserId).toBe('user-a');
+		expect(capturedId).toBe(7);
+	});
+
+	it('propagates RecipeNotFoundError from repo', async () => {
+		const layer = makeRepo({
+			unpin: (_, id) => Effect.fail(new RecipeNotFoundError({ id }))
+		});
+
+		const error = await Effect.runPromise(
+			unpinRecipe('user-a', 7).pipe(Effect.flip, Effect.provide(layer))
+		);
+
+		expect(error).toBeInstanceOf(RecipeNotFoundError);
 	});
 });

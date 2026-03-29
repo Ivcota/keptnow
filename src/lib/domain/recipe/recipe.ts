@@ -12,6 +12,7 @@ export interface Recipe {
 	userId: string;
 	name: string;
 	ingredients: RecipeIngredient[];
+	pinnedAt: Date | null;
 	trashedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;

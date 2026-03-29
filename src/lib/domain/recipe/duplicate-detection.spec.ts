@@ -9,6 +9,7 @@ const makeRecipe = (name: string, id = 1): Recipe => ({
 	userId: 'user-1',
 	name,
 	ingredients: [],
+	pinnedAt: null,
 	trashedAt: null,
 	createdAt: now,
 	updatedAt: now

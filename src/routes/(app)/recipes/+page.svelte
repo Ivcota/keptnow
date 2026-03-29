@@ -592,7 +592,41 @@
 											<p class="mt-0.5 text-sm text-[#b0a090] italic">No ingredients</p>
 										{/if}
 									</button>
-									<div class="flex flex-shrink-0 items-baseline gap-2">
+									<div class="flex flex-shrink-0 items-center gap-2">
+										<form
+											method="POST"
+											action={recipe.pinnedAt ? '?/unpin' : '?/pin'}
+											use:enhance
+										>
+											<input type="hidden" name="id" value={recipe.id} />
+											<button
+												type="submit"
+												aria-label={recipe.pinnedAt ? 'Unpin recipe' : 'Pin recipe'}
+												title={recipe.pinnedAt ? 'Unpin recipe' : 'Pin recipe'}
+												class="text-[#c0a880] hover:text-[#5c4a2a]"
+											>
+												{#if recipe.pinnedAt}
+													<!-- Filled pin -->
+													<svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+														<path
+															d="M16 2a1 1 0 0 1 .707.293l5 5A1 1 0 0 1 21 9h-1v5l2 3H2l2-3V9H3a1 1 0 0 1-.707-1.707l5-5A1 1 0 0 1 8 2h8zm-4 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
+														/>
+													</svg>
+												{:else}
+													<!-- Outlined pin -->
+													<svg
+														class="h-4 w-4"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+													>
+														<line x1="12" y1="17" x2="12" y2="22" />
+														<path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+													</svg>
+												{/if}
+											</button>
+										</form>
 										<button
 											onclick={() => startEdit(recipe)}
 											class="text-xs font-semibold text-[#5c4a2a] hover:underline"

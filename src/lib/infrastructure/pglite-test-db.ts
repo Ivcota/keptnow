@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS "recipe" (
   "id" serial PRIMARY KEY NOT NULL,
   "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
   "name" text NOT NULL,
+  "pinned_at" timestamp,
   "trashed_at" timestamp,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL

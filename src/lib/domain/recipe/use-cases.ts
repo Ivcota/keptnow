@@ -95,3 +95,21 @@ export const restoreRecipe = (
 			return yield* Effect.fail(new RecipeRestoreExpiredError({ id }));
 		}
 	});
+
+export const pinRecipe = (
+	userId: string,
+	id: number
+): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError, RecipeRepository> =>
+	Effect.gen(function* () {
+		const repo = yield* RecipeRepository;
+		yield* repo.pin(userId, id);
+	});
+
+export const unpinRecipe = (
+	userId: string,
+	id: number
+): Effect.Effect<void, RecipeNotFoundError | RecipeRepositoryError, RecipeRepository> =>
+	Effect.gen(function* () {
+		const repo = yield* RecipeRepository;
+		yield* repo.unpin(userId, id);
+	});

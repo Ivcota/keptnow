@@ -8,7 +8,9 @@ import {
 	createRecipe,
 	updateRecipe,
 	trashRecipe,
-	restoreRecipe
+	restoreRecipe,
+	pinRecipe,
+	unpinRecipe
 } from '$lib/domain/recipe/use-cases';
 import { findAllFoodItems } from '$lib/domain/inventory/use-cases';
 import type { CreateRecipeIngredientInput } from '$lib/domain/recipe/recipe';
@@ -142,6 +144,50 @@ export const actions: Actions = {
 					}
 					return { ok: false as const, status: 500 as const, message: 'Database error' };
 				},
+				onSuccess: () => ({ ok: true as const })
+			})
+		);
+
+		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+	},
+
+	pin: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
+		const formData = await request.formData();
+		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
+
+		if (isNaN(id)) return fail(400, { message: 'Invalid recipe ID' });
+
+		const outcome = await appRuntime.runPromise(
+			Effect.match(pinRecipe(userId, id), {
+				onFailure: (e) =>
+					e._tag === 'RecipeNotFoundError'
+						? { ok: false as const, status: 404 as const, message: `Recipe ${e.id} not found` }
+						: { ok: false as const, status: 500 as const, message: 'Database error' },
+				onSuccess: () => ({ ok: true as const })
+			})
+		);
+
+		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
+	},
+
+	unpin: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+
+		const userId = locals.user.id;
+		const formData = await request.formData();
+		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
+
+		if (isNaN(id)) return fail(400, { message: 'Invalid recipe ID' });
+
+		const outcome = await appRuntime.runPromise(
+			Effect.match(unpinRecipe(userId, id), {
+				onFailure: (e) =>
+					e._tag === 'RecipeNotFoundError'
+						? { ok: false as const, status: 404 as const, message: `Recipe ${e.id} not found` }
+						: { ok: false as const, status: 500 as const, message: 'Database error' },
 				onSuccess: () => ({ ok: true as const })
 			})
 		);
