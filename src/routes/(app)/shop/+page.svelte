@@ -4,7 +4,13 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const checkedIds = $state(new Set(data.items.filter((i) => i.checked).map((i) => i.id)));
+	const checkedIds = $state(new Set<number>());
+	$effect(() => {
+		checkedIds.clear();
+		for (const i of data.items) {
+			if (i.checked) checkedIds.add(i.id);
+		}
+	});
 
 	function isChecked(id: number): boolean {
 		return checkedIds.has(id);

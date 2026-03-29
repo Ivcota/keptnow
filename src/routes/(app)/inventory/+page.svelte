@@ -20,7 +20,10 @@
 	let addExpirationDate = $state('');
 	let editingId = $state<number | null>(null);
 	let editTrackingType = $state('count');
-	let addFormOpen = $state(data.items.length === 0);
+	let addFormOpen = $state(false);
+	$effect(() => {
+		if (data.items.length === 0) addFormOpen = true;
+	});
 
 	function resetAddForm() {
 		addName = '';
