@@ -5,6 +5,7 @@
 	import type { Recipe } from '$lib/domain/recipe/recipe.js';
 	import { matchIngredients, calculateReadiness } from '$lib/domain/recipe/ingredient-matching.js';
 	import type { ReadinessStatus } from '$lib/domain/recipe/ingredient-matching.js';
+	import { findSimilarRecipeName } from '$lib/domain/recipe/duplicate-detection.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -35,6 +36,13 @@
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let nextLocalId = 0;
 	let nextBatchId = 0;
+
+	// Map of batchId → existing recipe name if a duplicate is detected
+	const batchDuplicates = $derived(
+		new Map(
+			batchRecipes.map((r) => [r.batchId, findSimilarRecipeName(r.name, data.recipes)])
+		)
+	);
 
 	// Edit state (for existing saved recipes)
 	let editingId = $state<number | null>(null);
@@ -374,6 +382,7 @@
 						unit: i.unit
 					}))
 				)}
+				{@const duplicateName = batchDuplicates.get(batchRecipe.batchId)}
 				<div class="rounded-2xl border border-[#e8e2d9] bg-white p-5 shadow-sm">
 					<div class="mb-4 flex items-center justify-between gap-2">
 						<h2 class="font-[Cormorant_Garamond,serif] text-xl font-semibold text-[#2c2416]">
@@ -410,6 +419,11 @@
 								class="w-full rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
 							/>
 						</div>
+						{#if duplicateName}
+							<div class="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+								A recipe named <strong>"{duplicateName}"</strong> already exists. You can save anyway or discard this one.
+							</div>
+						{/if}
 						{@render ingredientEditor(
 							batchRecipe.ingredients,
 							() => addBatchIngredient(batchRecipe.batchId),
