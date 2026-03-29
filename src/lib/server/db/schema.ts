@@ -31,4 +31,25 @@ export const foodItem = pgTable('food_item', {
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+export const recipe = pgTable('recipe', {
+	id: serial('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	name: text('name').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const recipeIngredient = pgTable('recipe_ingredient', {
+	id: serial('id').primaryKey(),
+	recipeId: integer('recipe_id')
+		.notNull()
+		.references(() => recipe.id, { onDelete: 'cascade' }),
+	name: text('name').notNull(),
+	canonicalName: text('canonical_name'),
+	quantity: text('quantity'),
+	unit: text('unit')
+});
+
 export * from './auth.schema';
