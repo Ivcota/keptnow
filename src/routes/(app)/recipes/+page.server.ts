@@ -2,15 +2,12 @@ import { fail } from '@sveltejs/kit';
 import { Effect } from 'effect';
 import type { Actions, PageServerLoad } from './$types';
 import { appRuntime } from '$lib/server/runtime';
-import {
-	createRecipe,
-	updateRecipe,
-	trashRecipe,
-	restoreRecipe
-} from '$lib/domain/recipe/use-cases';
+import { trashRecipe, restoreRecipe } from '$lib/domain/recipe/use-cases';
 import {
 	findAllRecipes,
-	findTrashedRecipes
+	findTrashedRecipes,
+	createRecipe,
+	updateRecipe
 } from '$lib/domain/recipe/recipe-service';
 import { findAllFoodItems } from '$lib/domain/inventory/use-cases';
 import type { CreateRecipeIngredientInput } from '$lib/domain/recipe/recipe';

@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Effect, Layer } from 'effect';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import * as schema from '$lib/server/db/schema.js';
 import { Database, type DatabaseInstance } from '$lib/infrastructure/database.js';
 import { RecipeService, RecipeServiceLive } from './recipe-service.js';
+import { RecipeValidationError, RecipeNotFoundError } from './errors.js';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS "user" (
@@ -203,5 +205,170 @@ describe('RecipeService (boundary — PGLite)', () => {
 		expect(recipes).toHaveLength(1);
 		expect(recipes[0].ingredients).toHaveLength(1);
 		expect(recipes[0].ingredients[0].name).toBe('Sugar');
+	});
+
+	describe('create', () => {
+		it('persists recipe and ingredients atomically', async () => {
+			const result = await run(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.create(USER_A, {
+						name: 'Omelette',
+						ingredients: [
+							{ name: 'Eggs', canonicalName: null, quantity: '3', unit: null },
+							{ name: 'Butter', canonicalName: null, quantity: '10', unit: 'g' }
+						]
+					});
+				})
+			);
+
+			expect(result.name).toBe('Omelette');
+			expect(result.userId).toBe(USER_A);
+			expect(result.id).toBeTypeOf('number');
+			expect(result.ingredients).toHaveLength(2);
+			expect(result.ingredients.map((i) => i.name).sort()).toEqual(['Butter', 'Eggs']);
+
+			// Verify persisted in DB
+			const dbRecipes = await db
+				.select()
+				.from(schema.recipe)
+				.where(eq(schema.recipe.userId, USER_A));
+			expect(dbRecipes).toHaveLength(1);
+		});
+
+		it('persists recipe with no ingredients', async () => {
+			const result = await run(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.create(USER_A, { name: 'Plain Dish', ingredients: [] });
+				})
+			);
+
+			expect(result.name).toBe('Plain Dish');
+			expect(result.ingredients).toHaveLength(0);
+		});
+
+		it('fails with RecipeValidationError for empty recipe name', async () => {
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.create(USER_A, { name: '  ', ingredients: [] }).pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeValidationError);
+
+			// DB must be untouched
+			const rows = await db.select().from(schema.recipe);
+			expect(rows).toHaveLength(0);
+		});
+
+		it('fails with RecipeValidationError for empty ingredient name', async () => {
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc
+						.create(USER_A, {
+							name: 'Valid',
+							ingredients: [{ name: '', canonicalName: null, quantity: null, unit: null }]
+						})
+						.pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeValidationError);
+
+			const rows = await db.select().from(schema.recipe);
+			expect(rows).toHaveLength(0);
+		});
+	});
+
+	describe('update', () => {
+		it('replaces all ingredients', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Old Name' })
+				.returning();
+			await db.insert(schema.recipeIngredient).values([
+				{ recipeId: recipeRow.id, name: 'Old Ingredient', canonicalName: null, quantity: null, unit: null }
+			]);
+
+			const result = await run(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc.update(USER_A, {
+						id: recipeRow.id,
+						name: 'New Name',
+						ingredients: [
+							{ name: 'New Ingredient A', canonicalName: null, quantity: '1', unit: 'cup' },
+							{ name: 'New Ingredient B', canonicalName: null, quantity: null, unit: null }
+						]
+					});
+				})
+			);
+
+			expect(result.name).toBe('New Name');
+			expect(result.ingredients).toHaveLength(2);
+			expect(result.ingredients.map((i) => i.name).sort()).toEqual([
+				'New Ingredient A',
+				'New Ingredient B'
+			]);
+
+			// Old ingredient should be gone
+			const remaining = await db
+				.select()
+				.from(schema.recipeIngredient)
+				.where(eq(schema.recipeIngredient.recipeId, recipeRow.id));
+			expect(remaining.map((i) => i.name)).not.toContain('Old Ingredient');
+		});
+
+		it('fails with RecipeNotFoundError for non-existent recipe', async () => {
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc
+						.update(USER_A, { id: 99999, name: 'X', ingredients: [] })
+						.pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeNotFoundError when updating another user recipe', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_B, name: 'B Recipe' })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc
+						.update(USER_A, { id: recipeRow.id, name: 'Hijacked', ingredients: [] })
+						.pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeNotFoundError);
+		});
+
+		it('fails with RecipeValidationError for empty recipe name', async () => {
+			const [recipeRow] = await db
+				.insert(schema.recipe)
+				.values({ userId: USER_A, name: 'Original' })
+				.returning();
+
+			const error = await Effect.runPromise(
+				Effect.gen(function* () {
+					const svc = yield* RecipeService;
+					return yield* svc
+						.update(USER_A, { id: recipeRow.id, name: '', ingredients: [] })
+						.pipe(Effect.flip);
+				}).pipe(Effect.provide(testLayer))
+			);
+
+			expect(error).toBeInstanceOf(RecipeValidationError);
+		});
 	});
 });
