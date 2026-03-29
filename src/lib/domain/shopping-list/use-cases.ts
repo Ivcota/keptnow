@@ -27,32 +27,29 @@ export const generateShoppingList = (
 		const shoppingListRepo = yield* ShoppingListRepository;
 		const recipeRepo = yield* RecipeRepository;
 
+		// 1. Compute restock inputs from expiring food items
 		const foodItems = yield* foodItemRepo.findAll(userId);
 		const restockItems = yield* getRestockItems(foodItems, DEFAULT_EXPIRATION_CONFIG, now).pipe(
 			Effect.orDie
 		);
+		const restockInputs: RestockShoppingItemInput[] = restockItems.map((ri) => ({
+			canonicalKey: (ri.foodItem.canonicalName ?? ri.foodItem.name).toLowerCase().trim(),
+			displayName: ri.foodItem.name,
+			sourceRestockItemId: ri.foodItem.id,
+			carriedStorageLocation: ri.foodItem.storageLocation,
+			carriedTrackingType: ri.foodItem.trackingType
+		}));
 
-		if (restockItems.length > 0) {
-			const inputs: RestockShoppingItemInput[] = restockItems.map((ri) => ({
-				canonicalKey: (ri.foodItem.canonicalName ?? ri.foodItem.name).toLowerCase().trim(),
-				displayName: ri.foodItem.name,
-				sourceRestockItemId: ri.foodItem.id,
-				carriedStorageLocation: ri.foodItem.storageLocation,
-				carriedTrackingType: ri.foodItem.trackingType
-			}));
-			yield* shoppingListRepo.addMissingRestock(userId, inputs);
-		}
-
+		// 2. Compute recipe inputs from pinned, non-trashed recipes
 		const allRecipes = yield* recipeRepo.findAll(userId);
 		const pinnedRecipes = allRecipes.filter((r) => r.pinnedAt !== null && r.trashedAt === null);
+		const recipeItemMap = new Map<
+			string,
+			{ displayName: string; sourceRecipeNames: string[] }
+		>();
 
 		if (pinnedRecipes.length > 0) {
 			const activeFoodItems = foodItems.filter((fi) => fi.trashedAt === null);
-			const recipeItemMap = new Map<
-				string,
-				{ displayName: string; sourceRecipeNames: string[] }
-			>();
-
 			for (const recipe of pinnedRecipes) {
 				const matches = matchIngredients(recipe.ingredients, activeFoodItems);
 				for (const { ingredient, matched } of matches) {
@@ -69,19 +66,30 @@ export const generateShoppingList = (
 					}
 				}
 			}
+		}
 
-			if (recipeItemMap.size > 0) {
-				const recipeInputs: RecipeShoppingItemInput[] = Array.from(recipeItemMap.entries()).map(
-					([key, value]) => ({
-						canonicalKey: key,
-						displayName: value.displayName,
-						sourceRecipeNames: value.sourceRecipeNames,
-						carriedStorageLocation: 'pantry',
-						carriedTrackingType: 'count'
-					})
-				);
-				yield* shoppingListRepo.mergeRecipeIngredients(userId, recipeInputs);
-			}
+		// 3. Sync: remove unchecked items whose source no longer applies
+		const activeCanonicalKeys = [
+			...restockInputs.map((i) => i.canonicalKey),
+			...recipeItemMap.keys()
+		];
+		yield* shoppingListRepo.removeUncheckedStale(userId, activeCanonicalKeys);
+
+		// 4. Insert/upsert active items
+		if (restockInputs.length > 0) {
+			yield* shoppingListRepo.addMissingRestock(userId, restockInputs);
+		}
+		if (recipeItemMap.size > 0) {
+			const recipeInputs: RecipeShoppingItemInput[] = Array.from(recipeItemMap.entries()).map(
+				([key, value]) => ({
+					canonicalKey: key,
+					displayName: value.displayName,
+					sourceRecipeNames: value.sourceRecipeNames,
+					carriedStorageLocation: 'pantry',
+					carriedTrackingType: 'count'
+				})
+			);
+			yield* shoppingListRepo.mergeRecipeIngredients(userId, recipeInputs);
 		}
 
 		return yield* shoppingListRepo.findAll(userId);

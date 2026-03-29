@@ -71,6 +71,7 @@ function makeShoppingListRepo(
 		findAll: noop,
 		addMissingRestock: noop,
 		mergeRecipeIngredients: noop,
+		removeUncheckedStale: () => Effect.void,
 		setChecked: noop,
 		clearAll: noop,
 		...overrides
@@ -383,6 +384,53 @@ describe('generateShoppingList', () => {
 		);
 
 		expect(mergeCallCount).toBe(0);
+	});
+
+	it('calls removeUncheckedStale with the active canonical keys', async () => {
+		const expiredItem = makeFoodItem({ id: 10, name: 'Milk', canonicalName: 'milk' });
+		let capturedKeys: string[] | null = null;
+
+		const shoppingListLayer = makeShoppingListRepo({
+			addMissingRestock: () => Effect.void,
+			mergeRecipeIngredients: () => Effect.void,
+			removeUncheckedStale: (_, keys) => {
+				capturedKeys = keys;
+				return Effect.void;
+			},
+			findAll: () => Effect.succeed([])
+		});
+		const foodItemLayer = makeFoodItemRepo({ findAll: () => Effect.succeed([expiredItem]) });
+		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
+
+		await Effect.runPromise(
+			generateShoppingList('user-a', now).pipe(
+				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
+			)
+		);
+
+		expect(capturedKeys).toEqual(['milk']);
+	});
+
+	it('calls removeUncheckedStale with empty array when no sources produce items', async () => {
+		let capturedKeys: string[] | null = null;
+
+		const shoppingListLayer = makeShoppingListRepo({
+			removeUncheckedStale: (_, keys) => {
+				capturedKeys = keys;
+				return Effect.void;
+			},
+			findAll: () => Effect.succeed([])
+		});
+		const foodItemLayer = makeFoodItemRepo({ findAll: () => Effect.succeed([]) });
+		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
+
+		await Effect.runPromise(
+			generateShoppingList('user-a', now).pipe(
+				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
+			)
+		);
+
+		expect(capturedKeys).toEqual([]);
 	});
 
 	it('deduplicates ingredients across multiple recipes into one item with merged source names', async () => {

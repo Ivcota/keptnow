@@ -19,6 +19,10 @@ export interface ShoppingListRepository {
 		userId: string,
 		items: RecipeShoppingItemInput[]
 	): Effect.Effect<void, ShoppingListRepositoryError>;
+	removeUncheckedStale(
+		userId: string,
+		activeCanonicalKeys: string[]
+	): Effect.Effect<void, ShoppingListRepositoryError>;
 	setChecked(
 		userId: string,
 		id: number,

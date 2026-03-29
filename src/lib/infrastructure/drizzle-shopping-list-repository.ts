@@ -1,5 +1,5 @@
 import { Layer, Effect } from 'effect';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { ShoppingListRepository } from '$lib/domain/shopping-list/shopping-list-repository.js';
 import {
 	ShoppingListRepositoryError,
@@ -72,6 +72,25 @@ export const DrizzleShoppingListRepository = Layer.effect(
 					catch: (e) =>
 						new ShoppingListRepositoryError({
 							message: 'Failed to add restock shopping items',
+							cause: e
+						})
+				}),
+
+			removeUncheckedStale: (userId, activeCanonicalKeys) =>
+				Effect.tryPromise({
+					try: async () => {
+						const conditions = [
+							eq(shoppingListItem.userId, userId),
+							eq(shoppingListItem.checked, false)
+						];
+						if (activeCanonicalKeys.length > 0) {
+							conditions.push(notInArray(shoppingListItem.canonicalKey, activeCanonicalKeys));
+						}
+						await db.delete(shoppingListItem).where(and(...conditions));
+					},
+					catch: (e) =>
+						new ShoppingListRepositoryError({
+							message: 'Failed to remove stale shopping items',
 							cause: e
 						})
 				}),
