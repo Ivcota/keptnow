@@ -76,6 +76,7 @@ export class UnknownUnitError extends Error {
 }
 
 export function normalizeUnit(value: number, unit: string): Quantity {
+	if (unit == null) throw new UnknownUnitError(String(unit));
 	const normalized = unit.trim().toLowerCase();
 
 	const volumeFactor = VOLUME_TO_ML[normalized];

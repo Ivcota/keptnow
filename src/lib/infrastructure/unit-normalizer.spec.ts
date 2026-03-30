@@ -149,6 +149,14 @@ describe('normalizeUnit', () => {
 			expect(() => normalizeUnit(1, '')).toThrow(UnknownUnitError);
 		});
 
+		it('throws UnknownUnitError for undefined unit', () => {
+			expect(() => normalizeUnit(1, undefined as unknown as string)).toThrow(UnknownUnitError);
+		});
+
+		it('throws UnknownUnitError for null unit', () => {
+			expect(() => normalizeUnit(1, null as unknown as string)).toThrow(UnknownUnitError);
+		});
+
 		it('throws UnknownUnitError for partial match', () => {
 			expect(() => normalizeUnit(1, 'c')).toThrow(UnknownUnitError);
 		});

@@ -198,7 +198,7 @@
 
 	<!-- Done shopping button -->
 	{#if hasCheckedItems}
-		<div class="fixed bottom-0 left-0 right-0 flex justify-center p-5 pb-8">
+		<div class="fixed bottom-16 left-0 right-0 flex justify-center p-5">
 			<button
 				type="button"
 				onclick={openReviewOrSubmit}
