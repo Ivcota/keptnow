@@ -312,7 +312,7 @@ describe('generateShoppingList', () => {
 		const recipe = makeRecipe({
 			id: 1,
 			name: 'Pasta',
-			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
+			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
 		});
 		let capturedRecipeItems: RecipeShoppingItemInput[] | null = null;
 
@@ -344,8 +344,8 @@ describe('generateShoppingList', () => {
 	it('excludes ingredients that are already in inventory', async () => {
 		const recipe = makeRecipe({
 			ingredients: [
-				{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } },
-				{ id: 2, recipeId: 1, name: 'Sugar', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }
+				{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } },
+				{ id: 2, recipeId: 1, name: 'Sugar', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }
 			]
 		});
 		const flourInInventory = makeFoodItem({ id: 2, name: 'Flour', canonicalName: 'flour', expirationDate: freshDate });
@@ -377,7 +377,7 @@ describe('generateShoppingList', () => {
 	it('does not add ingredients from unpinned recipes', async () => {
 		const unpinnedRecipe = makeRecipe({
 			pinnedAt: null,
-			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
+			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
 		});
 		let mergeCallCount = 0;
 
@@ -405,7 +405,7 @@ describe('generateShoppingList', () => {
 		const trashedRecipe = makeRecipe({
 			pinnedAt: now,
 			trashedAt: now,
-			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
+			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
 		});
 		let mergeCallCount = 0;
 
@@ -480,12 +480,12 @@ describe('generateShoppingList', () => {
 		const recipe1 = makeRecipe({
 			id: 1,
 			name: 'Pasta',
-			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
+			ingredients: [{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
 		});
 		const recipe2 = makeRecipe({
 			id: 2,
 			name: 'Pancakes',
-			ingredients: [{ id: 2, recipeId: 2, name: 'Flour', canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
+			ingredients: [{ id: 2, recipeId: 2, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 1, unit: 'count' as const } }]
 		});
 		let capturedRecipeItems: RecipeShoppingItemInput[] | null = null;
 
@@ -514,7 +514,7 @@ describe('generateShoppingList', () => {
 	it('calculates deficit quantity when inventory has some but not enough', async () => {
 		const recipe = makeRecipe({
 			ingredients: [
-				{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
+				{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
 			]
 		});
 		const flourInInventory = makeFoodItem({
@@ -554,14 +554,14 @@ describe('generateShoppingList', () => {
 			id: 1,
 			name: 'Pasta',
 			ingredients: [
-				{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 200, unit: 'g' as const } }
+				{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 200, unit: 'g' as const } }
 			]
 		});
 		const recipe2 = makeRecipe({
 			id: 2,
 			name: 'Pancakes',
 			ingredients: [
-				{ id: 2, recipeId: 2, name: 'Flour', canonicalIngredientId: null, quantity: { value: 300, unit: 'g' as const } }
+				{ id: 2, recipeId: 2, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 300, unit: 'g' as const } }
 			]
 		});
 		const flourInInventory = makeFoodItem({
@@ -600,7 +600,7 @@ describe('generateShoppingList', () => {
 	it('uses full recipe quantity when unit mismatch with inventory', async () => {
 		const recipe = makeRecipe({
 			ingredients: [
-				{ id: 1, recipeId: 1, name: 'Flour', canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
+				{ id: 1, recipeId: 1, name: 'Flour', canonicalName: null, canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
 			]
 		});
 		const flourInInventory = makeFoodItem({
@@ -929,7 +929,7 @@ describe('generateShoppingList after completeShoppingTrip (integration)', () => 
 			id: 1,
 			name: 'Roast Chicken',
 			ingredients: [
-				{ id: 1, recipeId: 1, name: 'Chicken Breasts', canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
+				{ id: 1, recipeId: 1, name: 'Chicken Breasts', canonicalName: null, canonicalIngredientId: null, quantity: { value: 500, unit: 'g' as const } }
 			]
 		});
 

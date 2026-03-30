@@ -50,6 +50,7 @@ export const recipeIngredient = pgTable('recipe_ingredient', {
 		.notNull()
 		.references(() => recipe.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
+	canonicalName: text('canonical_name'),
 	canonicalIngredientId: integer('canonical_ingredient_id').references(() => canonicalIngredient.id),
 	quantityValue: numeric('quantity_value').notNull(),
 	quantityUnit: text('quantity_unit').notNull()

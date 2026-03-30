@@ -16,6 +16,7 @@ function rowsToRecipe(
 		id: row.id,
 		recipeId: row.recipeId,
 		name: row.name,
+		canonicalName: row.canonicalName,
 		canonicalIngredientId: row.canonicalIngredientId,
 		quantity: { value: Number(row.quantityValue), unit: row.quantityUnit } as Quantity
 	}));
@@ -124,6 +125,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 												input.ingredients.map((ing) => ({
 													recipeId: recipeRow.id,
 													name: ing.name,
+													canonicalName: ing.canonicalName ?? null,
 													canonicalIngredientId: ing.canonicalIngredientId ?? null,
 													quantityValue: String(ing.quantity.value),
 													quantityUnit: ing.quantity.unit
@@ -194,6 +196,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 													input.ingredients.map((ing) => ({
 														recipeId: input.id,
 														name: ing.name,
+														canonicalName: ing.canonicalName ?? null,
 														canonicalIngredientId: ing.canonicalIngredientId ?? null,
 														quantityValue: String(ing.quantity.value),
 														quantityUnit: ing.quantity.unit

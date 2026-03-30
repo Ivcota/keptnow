@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS "recipe_ingredient" (
   "id" serial PRIMARY KEY NOT NULL,
   "recipe_id" integer NOT NULL REFERENCES "recipe"("id") ON DELETE CASCADE,
   "name" text NOT NULL,
+  "canonical_name" text,
   "canonical_ingredient_id" integer REFERENCES "canonical_ingredient"("id"),
   "quantity_value" numeric NOT NULL,
   "quantity_unit" text NOT NULL

@@ -22,9 +22,9 @@ function findMatchingFoodItems(ingredient: Ingredient, foodItems: FoodItem[]): F
 		if (ingredient.canonicalIngredientId !== null && fi.canonicalIngredientId !== null) {
 			return ingredient.canonicalIngredientId === fi.canonicalIngredientId;
 		}
-		const ingredientName = ingredient.name.toLowerCase().trim();
+		const ingredientKey = (ingredient.canonicalName ?? ingredient.name).toLowerCase().trim();
 		const fiKey = (fi.canonicalName ?? fi.name).toLowerCase().trim();
-		return fiKey === ingredientName;
+		return fiKey === ingredientKey;
 	});
 }
 

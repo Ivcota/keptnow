@@ -9,6 +9,7 @@ function makeIngredient(overrides: Partial<Ingredient> & { name: string }): Ingr
 	return {
 		id: 1,
 		recipeId: 1,
+		canonicalName: null,
 		canonicalIngredientId: null,
 		quantity: { value: 1, unit: 'count' },
 		...overrides

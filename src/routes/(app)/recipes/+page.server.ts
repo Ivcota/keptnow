@@ -47,11 +47,13 @@ function parseIngredients(formData: FormData): CreateIngredientInput[] | null {
 	try {
 		const items = JSON.parse(raw) as Array<{
 			name: string;
+			canonicalName?: string | null;
 			canonicalIngredientId?: number | null;
 			quantity: { value: number; unit: string };
 		}>;
 		return items.map((item) => ({
 			name: item.name,
+			canonicalName: item.canonicalName ?? null,
 			canonicalIngredientId: item.canonicalIngredientId,
 			quantity: normalizeUnit(item.quantity.value, item.quantity.unit)
 		}));

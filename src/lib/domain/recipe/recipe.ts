@@ -4,6 +4,7 @@ export interface Ingredient {
 	id: number;
 	recipeId: number;
 	name: string;
+	canonicalName: string | null;
 	canonicalIngredientId: number | null;
 	quantity: Quantity;
 }
@@ -28,6 +29,7 @@ export interface Recipe {
 
 export interface CreateIngredientInput {
 	name: string;
+	canonicalName?: string | null;
 	canonicalIngredientId?: number | null;
 	quantity: Quantity;
 }

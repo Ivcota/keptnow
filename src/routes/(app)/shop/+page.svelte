@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { formatQuantity } from '$lib/format-quantity.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -58,8 +59,8 @@
 			localId: idx,
 			name: item.displayName,
 			storageLocation: item.carriedStorageLocation,
-			quantityValue: 1,
-			quantityUnit: 'count' as const,
+			quantityValue: item.quantity.value,
+			quantityUnit: item.quantity.unit,
 			expirationDate: ''
 		}));
 		showReview = true;
@@ -128,17 +129,16 @@
 						></span>
 						<span class="min-w-0 flex-1">
 							<span class="block text-base font-semibold text-[#2c2416]">{item.displayName}</span>
-							{#if item.sourceType === 'recipe'}
-								<span class="block text-sm text-[#8a7a6a]">
-									{item.sourceRecipeNames?.join(' · ') ?? ''}
-								</span>
-							{:else if item.sourceRecipeNames && item.sourceRecipeNames.length > 0}
-								<span class="block text-sm text-[#8a7a6a]">
-									Expiring · {item.sourceRecipeNames.join(' · ')}
-								</span>
-							{:else}
-								<span class="block text-sm text-[#8a7a6a]">Expiring</span>
-							{/if}
+							<span class="block text-sm text-[#8a7a6a]">
+								{formatQuantity(item.quantity)}
+								{#if item.sourceType === 'recipe'}
+									· {item.sourceRecipeNames?.join(' · ') ?? ''}
+								{:else if item.sourceRecipeNames && item.sourceRecipeNames.length > 0}
+									· Expiring · {item.sourceRecipeNames.join(' · ')}
+								{:else}
+									· Expiring
+								{/if}
+							</span>
 						</span>
 					</button>
 				</form>
@@ -182,6 +182,7 @@
 								<span class="block text-base font-semibold text-[#2c2416] line-through"
 									>{item.displayName}</span
 								>
+								<span class="block text-sm text-[#b0a090]">{formatQuantity(item.quantity)}</span>
 							</span>
 						</button>
 					</form>

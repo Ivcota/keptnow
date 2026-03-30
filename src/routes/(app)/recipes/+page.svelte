@@ -18,6 +18,7 @@
 	interface ReviewIngredient {
 		localId: number;
 		name: string;
+		canonicalName: string | null;
 		canonicalIngredientId: number | null;
 		quantity: { value: number; unit: string };
 	}
@@ -155,6 +156,7 @@
 						ingredients: recipe.ingredients.map((ing) => ({
 							localId: nextLocalId++,
 							name: ing.name,
+							canonicalName: ing.canonicalName ?? null,
 							canonicalIngredientId: null,
 							quantity: ing.quantity
 						})),
@@ -197,6 +199,7 @@
 			recipe.ingredients.push({
 				localId: nextLocalId++,
 				name: '',
+				canonicalName: null,
 				canonicalIngredientId: null,
 				quantity: { value: 1, unit: 'count' }
 			});
@@ -215,6 +218,7 @@
 		editIngredients = recipe.ingredients.map((ing) => ({
 			localId: nextLocalId++,
 			name: ing.name,
+			canonicalName: ing.canonicalName ?? null,
 			canonicalIngredientId: ing.canonicalIngredientId,
 			quantity: ing.quantity
 		}));
@@ -230,6 +234,7 @@
 		editIngredients.push({
 			localId: nextLocalId++,
 			name: '',
+			canonicalName: null,
 			canonicalIngredientId: null,
 			quantity: { value: 1, unit: 'count' }
 		});
@@ -244,6 +249,7 @@
 		JSON.stringify(
 			editIngredients.map((i) => ({
 				name: i.name,
+				canonicalName: i.canonicalName ?? null,
 				canonicalIngredientId: i.canonicalIngredientId,
 				quantity: i.quantity
 			}))
@@ -411,6 +417,7 @@
 				{@const ingredientsJson = JSON.stringify(
 					batchRecipe.ingredients.map((i) => ({
 						name: i.name,
+						canonicalName: i.canonicalName ?? null,
 						canonicalIngredientId: i.canonicalIngredientId,
 						quantity: i.quantity
 					}))

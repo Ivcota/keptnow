@@ -57,14 +57,14 @@ export const generateShoppingList = (
 				const matches = matchIngredients(recipe.ingredients, activeFoodItems);
 				for (const { ingredient, matched } of matches) {
 					if (matched) continue;
-					const key = ingredient.name.toLowerCase().trim();
+					const key = (ingredient.canonicalName ?? ingredient.name).toLowerCase().trim();
 					const existing = recipeItemMap.get(key);
 					if (existing) {
 						existing.sourceRecipeNames.push(recipe.name);
 						existing.quantities.push(ingredient.quantity);
 					} else {
 						recipeItemMap.set(key, {
-							displayName: ingredient.name,
+							displayName: ingredient.canonicalName ?? ingredient.name,
 							sourceRecipeNames: [recipe.name],
 							quantities: [ingredient.quantity]
 						});
