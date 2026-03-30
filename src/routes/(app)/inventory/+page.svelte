@@ -4,7 +4,7 @@
 	import { getExpirationStatus } from '$lib/domain/inventory/expiration.js';
 	import { compressImage } from '$lib/compress-image.js';
 	import type { StorageLocation, FoodItem } from '$lib/domain/inventory/food-item.js';
-	import type { QuantityUnit } from '$lib/domain/shared/quantity.js';
+	import { formatQuantity } from '$lib/format-quantity.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -16,7 +16,7 @@
 	);
 	let addName = $state('');
 	let addQuantityValue = $state('1');
-	let addQuantityUnit = $state<QuantityUnit>('count');
+	let addQuantityUnit = $state('count');
 	let addExpirationDate = $state('');
 	let editingId = $state<number | null>(null);
 	let addFormOpen = $state(false);
@@ -136,7 +136,7 @@
 		canonicalName: string | null;
 		storageLocation: StorageLocation;
 		quantityValue: number;
-		quantityUnit: QuantityUnit;
+		quantityUnit: string;
 		expirationDate: string;
 	}
 
@@ -202,7 +202,7 @@
 				name: string;
 				canonicalName: string | null;
 				storageLocation: StorageLocation;
-				quantity: { value: number; unit: QuantityUnit };
+				quantity: { value: number; unit: string };
 				expirationDate: string | null;
 			}>;
 
@@ -571,9 +571,28 @@
 									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
 									aria-label="Unit"
 								>
-									<option value="count">count</option>
-									<option value="ml">ml</option>
-									<option value="g">g</option>
+									<optgroup label="Count">
+										<option value="count">count</option>
+										<option value="each">each</option>
+										<option value="dozen">dozen</option>
+									</optgroup>
+									<optgroup label="Volume">
+										<option value="tsp">tsp</option>
+										<option value="tbsp">tbsp</option>
+										<option value="fl oz">fl oz</option>
+										<option value="cup">cup</option>
+										<option value="pt">pint</option>
+										<option value="qt">quart</option>
+										<option value="gal">gallon</option>
+										<option value="ml">ml</option>
+										<option value="l">liter</option>
+									</optgroup>
+									<optgroup label="Weight">
+										<option value="oz">oz</option>
+										<option value="lb">lb</option>
+										<option value="g">g</option>
+										<option value="kg">kg</option>
+									</optgroup>
 								</select>
 								<input
 									type="date"
@@ -728,9 +747,28 @@
 										bind:value={addQuantityUnit}
 										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
 									>
-										<option value="count">count</option>
-										<option value="ml">ml</option>
-										<option value="g">g</option>
+										<optgroup label="Count">
+											<option value="count">count</option>
+											<option value="each">each</option>
+											<option value="dozen">dozen</option>
+										</optgroup>
+										<optgroup label="Volume">
+											<option value="tsp">tsp</option>
+											<option value="tbsp">tbsp</option>
+											<option value="fl oz">fl oz</option>
+											<option value="cup">cup</option>
+											<option value="pt">pint</option>
+											<option value="qt">quart</option>
+											<option value="gal">gallon</option>
+											<option value="ml">ml</option>
+											<option value="l">liter</option>
+										</optgroup>
+										<optgroup label="Weight">
+											<option value="oz">oz</option>
+											<option value="lb">lb</option>
+											<option value="g">g</option>
+											<option value="kg">kg</option>
+										</optgroup>
 									</select>
 								</div>
 							</div>
@@ -850,9 +888,28 @@
 												value={item.quantity.unit}
 												class="rounded-lg border border-[#ddd6cc] bg-white px-3 py-2 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
 											>
-												<option value="count">count</option>
-												<option value="ml">ml</option>
-												<option value="g">g</option>
+												<optgroup label="Count">
+													<option value="count">count</option>
+													<option value="each">each</option>
+													<option value="dozen">dozen</option>
+												</optgroup>
+												<optgroup label="Volume">
+													<option value="tsp">tsp</option>
+													<option value="tbsp">tbsp</option>
+													<option value="fl oz">fl oz</option>
+													<option value="cup">cup</option>
+													<option value="pt">pint</option>
+													<option value="qt">quart</option>
+													<option value="gal">gallon</option>
+													<option value="ml">ml</option>
+													<option value="l">liter</option>
+												</optgroup>
+												<optgroup label="Weight">
+													<option value="oz">oz</option>
+													<option value="lb">lb</option>
+													<option value="g">g</option>
+													<option value="kg">kg</option>
+												</optgroup>
 											</select>
 										</div>
 									</div>
@@ -984,9 +1041,7 @@
 								</div>
 
 								<p class="mb-3 text-xs font-medium tracking-[0.1em] text-[#8a8279]">
-									{item.quantity.unit === 'count'
-										? `Qty: ${item.quantity.value}`
-										: `${item.quantity.value} ${item.quantity.unit}`}
+									{formatQuantity(item.quantity)}
 								</p>
 
 								{#if item.expirationDate && status}

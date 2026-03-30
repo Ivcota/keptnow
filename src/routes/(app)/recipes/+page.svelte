@@ -6,6 +6,7 @@
 	import { matchIngredients, calculateReadiness } from '$lib/domain/recipe/ingredient-matching.js';
 	import type { ReadinessStatus } from '$lib/domain/recipe/ingredient-matching.js';
 	import { findSimilarRecipeName } from '$lib/domain/recipe/duplicate-detection.js';
+	import { formatQuantity } from '$lib/format-quantity.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -689,7 +690,7 @@
 													<span class="text-[#8a7a6a]">{match.ingredient.name}</span>
 												{/if}
 												<span class="ml-auto text-xs text-[#b0a090]">
-													{match.ingredient.quantity.value} {match.ingredient.quantity.unit}
+													{formatQuantity(match.ingredient.quantity)}
 												</span>
 											</li>
 										{/each}
@@ -763,28 +764,67 @@
 		{/if}
 		<div class="flex flex-col gap-2">
 			{#each ingredients as ing (ing.localId)}
-				<div class="flex items-center gap-2">
-					<input
-						bind:value={ing.name}
-						placeholder="Ingredient name"
-						class="min-w-0 flex-1 rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
-					/>
-					<button
-						type="button"
-						onclick={() => onRemove(ing.localId)}
-						class="flex-shrink-0 text-[#c0a080] hover:text-red-500"
-						aria-label="Remove ingredient"
-					>
-						<svg
-							class="h-4 w-4"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
+				<div class="flex flex-col gap-1">
+					<div class="flex items-center gap-2">
+						<input
+							bind:value={ing.name}
+							placeholder="Ingredient name"
+							class="min-w-0 flex-1 rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-2 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
+						/>
+						<button
+							type="button"
+							onclick={() => onRemove(ing.localId)}
+							class="flex-shrink-0 text-[#c0a080] hover:text-red-500"
+							aria-label="Remove ingredient"
 						>
-							<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-						</svg>
-					</button>
+							<svg
+								class="h-4 w-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+					<div class="flex items-center gap-2 pl-0">
+						<input
+							type="number"
+							bind:value={ing.quantity.value}
+							min="0.01"
+							step="any"
+							placeholder="qty"
+							class="w-20 rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-3 py-1.5 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
+						/>
+						<select
+							bind:value={ing.quantity.unit}
+							class="flex-1 rounded-xl border border-[#e8e2d9] bg-[#faf8f5] px-2 py-1.5 text-sm text-[#2c2416] focus:border-[#5c4a2a] focus:outline-none"
+						>
+							<optgroup label="Count">
+								<option value="count">count</option>
+								<option value="each">each</option>
+								<option value="dozen">dozen</option>
+							</optgroup>
+							<optgroup label="Volume">
+								<option value="tsp">tsp</option>
+								<option value="tbsp">tbsp</option>
+								<option value="fl oz">fl oz</option>
+								<option value="cup">cup</option>
+								<option value="pt">pint</option>
+								<option value="qt">quart</option>
+								<option value="gal">gallon</option>
+								<option value="ml">ml</option>
+								<option value="l">liter</option>
+							</optgroup>
+							<optgroup label="Weight">
+								<option value="oz">oz</option>
+								<option value="lb">lb</option>
+								<option value="g">g</option>
+								<option value="kg">kg</option>
+							</optgroup>
+						</select>
+					</div>
 				</div>
 			{/each}
 		</div>

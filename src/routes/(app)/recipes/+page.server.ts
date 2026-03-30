@@ -15,6 +15,7 @@ import {
 } from '$lib/domain/recipe/use-cases';
 import { findAllFoodItems } from '$lib/domain/inventory/use-cases';
 import type { CreateIngredientInput, CreateNoteInput } from '$lib/domain/recipe/recipe';
+import { normalizeUnit, UnknownUnitError } from '$lib/infrastructure/unit-normalizer';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
@@ -44,8 +45,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 function parseIngredients(formData: FormData): CreateIngredientInput[] | null {
 	const raw = formData.get('ingredients')?.toString() ?? '[]';
 	try {
-		return JSON.parse(raw) as CreateIngredientInput[];
-	} catch {
+		const items = JSON.parse(raw) as Array<{
+			name: string;
+			canonicalIngredientId?: number | null;
+			quantity: { value: number; unit: string };
+		}>;
+		return items.map((item) => ({
+			name: item.name,
+			canonicalIngredientId: item.canonicalIngredientId,
+			quantity: normalizeUnit(item.quantity.value, item.quantity.unit)
+		}));
+	} catch (e) {
+		if (e instanceof UnknownUnitError) return null;
 		return null;
 	}
 }

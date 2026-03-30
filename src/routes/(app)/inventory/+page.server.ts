@@ -18,7 +18,7 @@ import type {
 	StorageLocation,
 	CreateFoodItemInput
 } from '$lib/domain/inventory/food-item';
-import type { QuantityUnit } from '$lib/domain/shared/quantity';
+import { normalizeUnit, UnknownUnitError } from '$lib/infrastructure/unit-normalizer';
 import { getRestockItems } from '$lib/domain/inventory/restock';
 import { DEFAULT_EXPIRATION_CONFIG } from '$lib/domain/inventory/expiration';
 
@@ -48,24 +48,37 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return { items, trashedItems, restockItems };
 };
 
-function parseItemFields(formData: FormData) {
+function parseItemFields(
+	formData: FormData
+): { ok: true; fields: ReturnType<typeof buildFields> } | { ok: false; message: string } {
 	const name = formData.get('name')?.toString() ?? '';
 	const storageLocation = (formData.get('storageLocation')?.toString() ??
 		'pantry') as StorageLocation;
 	const quantityValueRaw = formData.get('quantityValue')?.toString();
-	const quantityUnit = (formData.get('quantityUnit')?.toString() ?? 'count') as QuantityUnit;
+	const quantityUnitRaw = formData.get('quantityUnit')?.toString() ?? 'count';
 	const expirationDateRaw = formData.get('expirationDate')?.toString();
 
 	const quantityValue = quantityValueRaw ? parseFloat(quantityValueRaw) : 1;
 	const expirationDate = expirationDateRaw ? new Date(expirationDateRaw) : null;
 
-	return {
-		name,
-		canonicalName: null,
-		storageLocation,
-		quantity: { value: quantityValue, unit: quantityUnit },
-		expirationDate
-	};
+	try {
+		const quantity = normalizeUnit(quantityValue, quantityUnitRaw);
+		return { ok: true, fields: buildFields(name, storageLocation, quantity, expirationDate) };
+	} catch (e) {
+		if (e instanceof UnknownUnitError) {
+			return { ok: false, message: e.message };
+		}
+		throw e;
+	}
+}
+
+function buildFields(
+	name: string,
+	storageLocation: StorageLocation,
+	quantity: ReturnType<typeof normalizeUnit>,
+	expirationDate: Date | null
+) {
+	return { name, canonicalName: null as null, storageLocation, quantity, expirationDate };
 }
 
 export const actions: Actions = {
@@ -81,7 +94,9 @@ export const actions: Actions = {
 
 		const userId = locals.user.id;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
-		const fields = parseItemFields(await request.formData());
+		const parsed = parseItemFields(await request.formData());
+		if (!parsed.ok) return fail(400, { message: parsed.message });
+		const fields = parsed.fields;
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
@@ -118,7 +133,9 @@ export const actions: Actions = {
 
 		if (isNaN(id)) return fail(400, { message: 'Invalid item ID' });
 
-		const fields = parseItemFields(formData);
+		const parsed = parseItemFields(formData);
+		if (!parsed.ok) return fail(400, { message: parsed.message });
+		const fields = parsed.fields;
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
@@ -246,16 +263,21 @@ export const actions: Actions = {
 			return fail(400, { message: 'No items selected' });
 		}
 
-		const items: CreateFoodItemInput[] = rawItems.map((item) => ({
-			name: item.name,
-			canonicalName: item.canonicalName ?? null,
-			storageLocation: item.storageLocation as StorageLocation,
-			quantity: {
-				value: item.quantityValue,
-				unit: item.quantityUnit as QuantityUnit
-			},
-			expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
-		}));
+		let items: CreateFoodItemInput[];
+		try {
+			items = rawItems.map((item) => ({
+				name: item.name,
+				canonicalName: item.canonicalName ?? null,
+				storageLocation: item.storageLocation as StorageLocation,
+				quantity: normalizeUnit(item.quantityValue, item.quantityUnit),
+				expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
+			}));
+		} catch (e) {
+			if (e instanceof UnknownUnitError) {
+				return fail(400, { message: e.message });
+			}
+			throw e;
+		}
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
