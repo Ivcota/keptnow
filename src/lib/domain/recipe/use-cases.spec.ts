@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Effect, Layer } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 import { RecipeRepository } from './recipe-repository.js';
 import { RecipeValidationError, RecipeRestoreExpiredError, RecipeNotFoundError } from './errors.js';
 import {
@@ -26,7 +26,7 @@ const baseRecipe: Recipe = {
 
 const noop = () => Effect.die('not implemented');
 
-function makeRepo(overrides: Partial<RecipeRepository>): Layer.Layer<RecipeRepository> {
+function makeRepo(overrides: Partial<Context.Tag.Service<RecipeRepository>>): Layer.Layer<RecipeRepository> {
 	return Layer.succeed(RecipeRepository, {
 		findAll: noop,
 		findTrashed: noop,
@@ -37,7 +37,7 @@ function makeRepo(overrides: Partial<RecipeRepository>): Layer.Layer<RecipeRepos
 		pin: noop,
 		unpin: noop,
 		...overrides
-	} as RecipeRepository);
+	} as Context.Tag.Service<RecipeRepository>);
 }
 
 describe('createRecipe', () => {

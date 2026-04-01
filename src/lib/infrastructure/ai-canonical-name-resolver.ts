@@ -1,8 +1,10 @@
-import { Effect } from 'effect';
+import { Context, Effect } from 'effect';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { ANTHROPIC_API_KEY } from '$env/static/private';
 import { CanonicalNameResolver } from '$lib/domain/inventory/canonical-name-resolver.js';
+
+type CanonicalNameResolverService = Context.Tag.Service<CanonicalNameResolver>;
 
 const SYSTEM_PROMPT = `You are a food ingredient normalizer. Given a food item name, return a single canonical ingredient name in lowercase. Return only the canonical name, nothing else.
 
@@ -16,7 +18,7 @@ Examples:
 
 If the item is not a recognizable basic ingredient, return the item name lowercased.`;
 
-export const AICanonicalNameResolver = CanonicalNameResolver.of({
+export const AICanonicalNameResolver: CanonicalNameResolverService = {
 	resolve: (name) =>
 		Effect.tryPromise({
 			try: async () => {
@@ -29,4 +31,4 @@ export const AICanonicalNameResolver = CanonicalNameResolver.of({
 			},
 			catch: (e) => new Error(e instanceof Error ? e.message : String(e))
 		})
-});
+};

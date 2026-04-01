@@ -8,9 +8,15 @@ import {
 
 const { mockExtractRecipes } = vi.hoisted(() => ({ mockExtractRecipes: vi.fn() }));
 
-vi.mock('$lib/infrastructure/ai-recipe-scanner.js', () => ({
-	AIRecipeScanner: { extractRecipes: (...args: unknown[]) => mockExtractRecipes(...args) }
-}));
+vi.mock('$lib/infrastructure/ai-recipe-scanner.js', async () => {
+	const { Layer } = await import('effect');
+	const { RecipeScanner } = await import('$lib/domain/recipe/recipe-scanner.js');
+	const scanner = { extractRecipes: (...args: unknown[]) => mockExtractRecipes(...args) };
+	return {
+		AIRecipeScanner: scanner,
+		AIRecipeScannerLive: Layer.succeed(RecipeScanner, scanner)
+	};
+});
 
 import { POST } from './+server.js';
 

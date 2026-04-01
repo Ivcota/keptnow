@@ -9,27 +9,29 @@ import type {
 	ShoppingListItemNotFoundError
 } from './errors.js';
 
-export interface ShoppingListRepository {
-	findAll(userId: string): Effect.Effect<ShoppingListItem[], ShoppingListRepositoryError>;
-	addMissingRestock(
-		userId: string,
-		items: RestockShoppingItemInput[]
-	): Effect.Effect<void, ShoppingListRepositoryError>;
-	mergeRecipeIngredients(
-		userId: string,
-		items: RecipeShoppingItemInput[]
-	): Effect.Effect<void, ShoppingListRepositoryError>;
-	removeUncheckedStale(
-		userId: string,
-		activeCanonicalKeys: string[]
-	): Effect.Effect<void, ShoppingListRepositoryError>;
-	setChecked(
-		userId: string,
-		id: number,
-		checked: boolean
-	): Effect.Effect<void, ShoppingListItemNotFoundError | ShoppingListRepositoryError>;
-	clearAll(userId: string): Effect.Effect<void, ShoppingListRepositoryError>;
-}
-
-export const ShoppingListRepository =
-	Context.GenericTag<ShoppingListRepository>('ShoppingListRepository');
+export class ShoppingListRepository extends Context.Tag('ShoppingListRepository')<
+	ShoppingListRepository,
+	{
+		readonly findAll: (
+			userId: string
+		) => Effect.Effect<ShoppingListItem[], ShoppingListRepositoryError>;
+		readonly addMissingRestock: (
+			userId: string,
+			items: RestockShoppingItemInput[]
+		) => Effect.Effect<void, ShoppingListRepositoryError>;
+		readonly mergeRecipeIngredients: (
+			userId: string,
+			items: RecipeShoppingItemInput[]
+		) => Effect.Effect<void, ShoppingListRepositoryError>;
+		readonly removeUncheckedStale: (
+			userId: string,
+			activeCanonicalKeys: string[]
+		) => Effect.Effect<void, ShoppingListRepositoryError>;
+		readonly setChecked: (
+			userId: string,
+			id: number,
+			checked: boolean
+		) => Effect.Effect<void, ShoppingListItemNotFoundError | ShoppingListRepositoryError>;
+		readonly clearAll: (userId: string) => Effect.Effect<void, ShoppingListRepositoryError>;
+	}
+>() {}

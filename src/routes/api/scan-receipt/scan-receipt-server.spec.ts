@@ -8,9 +8,15 @@ import {
 
 const { mockExtractItems } = vi.hoisted(() => ({ mockExtractItems: vi.fn() }));
 
-vi.mock('$lib/infrastructure/ai-receipt-scanner.js', () => ({
-	AIReceiptScanner: { extractItems: (...args: unknown[]) => mockExtractItems(...args) }
-}));
+vi.mock('$lib/infrastructure/ai-receipt-scanner.js', async () => {
+	const { Layer } = await import('effect');
+	const { ReceiptScanner } = await import('$lib/domain/receipt/receipt-scanner.js');
+	const scanner = { extractItems: (...args: unknown[]) => mockExtractItems(...args) };
+	return {
+		AIReceiptScanner: scanner,
+		AIReceiptScannerLive: Layer.succeed(ReceiptScanner, scanner)
+	};
+});
 
 import { POST } from './+server.js';
 

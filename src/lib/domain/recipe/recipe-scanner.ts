@@ -23,8 +23,11 @@ export interface ScanRecipeInput {
 	mimeType: string;
 }
 
-export interface RecipeScanner {
-	extractRecipes(input: ScanRecipeInput): Effect.Effect<ExtractedRecipe[], ExtractionError>;
-}
-
-export const RecipeScanner = Context.GenericTag<RecipeScanner>('RecipeScanner');
+export class RecipeScanner extends Context.Tag('RecipeScanner')<
+	RecipeScanner,
+	{
+		readonly extractRecipes: (
+			input: ScanRecipeInput
+		) => Effect.Effect<ExtractedRecipe[], ExtractionError>;
+	}
+>() {}

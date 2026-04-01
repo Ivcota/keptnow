@@ -1,9 +1,11 @@
-import { Effect } from 'effect';
+import { Context, Effect, Layer } from 'effect';
+import { ReceiptScanner } from '$lib/domain/receipt/receipt-scanner.js';
+
+type ReceiptScannerService = Context.Tag.Service<ReceiptScanner>;
 import { generateObject, NoObjectGeneratedError } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { ANTHROPIC_API_KEY } from '$env/static/private';
 import { z } from 'zod';
-import { ReceiptScanner } from '$lib/domain/receipt/receipt-scanner.js';
 import {
 	UnreadableImageError,
 	NoItemsExtractedError,
@@ -93,7 +95,7 @@ For each item:
 
 Return only items that are clearly food products.`;
 
-export const AIReceiptScanner = ReceiptScanner.of({
+export const AIReceiptScanner: ReceiptScannerService = {
 	extractItems: (input) =>
 		Effect.tryPromise({
 			try: async () => {
@@ -134,4 +136,6 @@ export const AIReceiptScanner = ReceiptScanner.of({
 			},
 			catch: classifyAIError
 		})
-});
+};
+
+export const AIReceiptScannerLive = Layer.succeed(ReceiptScanner, AIReceiptScanner);

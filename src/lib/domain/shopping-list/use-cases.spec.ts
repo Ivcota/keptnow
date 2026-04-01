@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Effect, Layer } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 import { ShoppingListRepository } from './shopping-list-repository.js';
 import { FoodItemRepository } from '$lib/domain/inventory/food-item-repository.js';
 import { RecipeRepository } from '$lib/domain/recipe/recipe-repository.js';
@@ -65,7 +65,7 @@ function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
 const noop = () => Effect.die('not implemented');
 
 function makeShoppingListRepo(
-	overrides: Partial<ShoppingListRepository>
+	overrides: Partial<Context.Tag.Service<ShoppingListRepository>>
 ): Layer.Layer<ShoppingListRepository> {
 	return Layer.succeed(ShoppingListRepository, {
 		findAll: noop,
@@ -75,10 +75,10 @@ function makeShoppingListRepo(
 		setChecked: noop,
 		clearAll: noop,
 		...overrides
-	} as ShoppingListRepository);
+	} as Context.Tag.Service<ShoppingListRepository>);
 }
 
-function makeRecipeRepo(overrides: Partial<RecipeRepository>): Layer.Layer<RecipeRepository> {
+function makeRecipeRepo(overrides: Partial<Context.Tag.Service<RecipeRepository>>): Layer.Layer<RecipeRepository> {
 	return Layer.succeed(RecipeRepository, {
 		findAll: noop,
 		findTrashed: noop,
@@ -89,10 +89,10 @@ function makeRecipeRepo(overrides: Partial<RecipeRepository>): Layer.Layer<Recip
 		pin: noop,
 		unpin: noop,
 		...overrides
-	} as RecipeRepository);
+	} as Context.Tag.Service<RecipeRepository>);
 }
 
-function makeFoodItemRepo(overrides: Partial<FoodItemRepository>): Layer.Layer<FoodItemRepository> {
+function makeFoodItemRepo(overrides: Partial<Context.Tag.Service<FoodItemRepository>>): Layer.Layer<FoodItemRepository> {
 	return Layer.succeed(FoodItemRepository, {
 		findAll: noop,
 		findTrashed: noop,
@@ -102,8 +102,9 @@ function makeFoodItemRepo(overrides: Partial<FoodItemRepository>): Layer.Layer<F
 		trash: noop,
 		restore: noop,
 		patchCanonicalName: noop,
+		trashAll: noop,
 		...overrides
-	} as FoodItemRepository);
+	} as Context.Tag.Service<FoodItemRepository>);
 }
 
 const baseFoodItem: FoodItem = {

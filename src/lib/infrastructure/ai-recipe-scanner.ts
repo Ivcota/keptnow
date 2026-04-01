@@ -1,9 +1,11 @@
-import { Effect } from 'effect';
+import { Context, Effect, Layer } from 'effect';
+import { RecipeScanner } from '$lib/domain/recipe/recipe-scanner.js';
+
+type RecipeScannerService = Context.Tag.Service<RecipeScanner>;
 import { generateObject, NoObjectGeneratedError } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { ANTHROPIC_API_KEY } from '$env/static/private';
 import { z } from 'zod';
-import { RecipeScanner } from '$lib/domain/recipe/recipe-scanner.js';
 import type { ExtractedRecipe } from '$lib/domain/recipe/recipe-scanner.js';
 import {
 	UnreadableImageError,
@@ -104,7 +106,7 @@ For each item, set type to "ingredient" or "note":
 
 Extract only the ingredients and notes for each recipe. Do not extract full recipe instructions.`;
 
-export const AIRecipeScanner = RecipeScanner.of({
+export const AIRecipeScanner: RecipeScannerService = {
 	extractRecipes: (input) =>
 		Effect.tryPromise({
 			try: async () => {
@@ -147,4 +149,6 @@ export const AIRecipeScanner = RecipeScanner.of({
 			},
 			catch: classifyAIError
 		})
-});
+};
+
+export const AIRecipeScannerLive = Layer.succeed(RecipeScanner, AIRecipeScanner);

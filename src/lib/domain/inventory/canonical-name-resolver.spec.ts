@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Effect, Layer } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 import { CanonicalIngredientResolver } from '$lib/domain/shared/canonical-ingredient-resolver.js';
 import type { CanonicalIngredient } from '$lib/domain/shared/canonical-ingredient.js';
 import { FoodItemRepository } from './food-item-repository.js';
@@ -15,13 +15,13 @@ const makeIngredient = (overrides: Partial<CanonicalIngredient> = {}): Canonical
 	...overrides
 });
 
-const makeResolver = (impl: Partial<typeof CanonicalIngredientResolver.Service> = {}) =>
+const makeResolver = (impl: Partial<Context.Tag.Service<CanonicalIngredientResolver>> = {}) =>
 	Layer.succeed(CanonicalIngredientResolver, {
 		resolve: () => Effect.succeed(makeIngredient()),
 		...impl
-	});
+	} as Context.Tag.Service<CanonicalIngredientResolver>);
 
-const makeRepo = (impl: Partial<typeof FoodItemRepository.Service> = {}) =>
+const makeRepo = (impl: Partial<Context.Tag.Service<FoodItemRepository>> = {}) =>
 	Layer.succeed(FoodItemRepository, {
 		create: () => Effect.die('not used'),
 		bulkCreate: () => Effect.die('not used'),
@@ -31,8 +31,9 @@ const makeRepo = (impl: Partial<typeof FoodItemRepository.Service> = {}) =>
 		restore: () => Effect.die('not used'),
 		findTrashed: () => Effect.die('not used'),
 		patchCanonicalName: () => Effect.succeed(undefined as void),
+		trashAll: () => Effect.die('not used'),
 		...impl
-	});
+	} as Context.Tag.Service<FoodItemRepository>);
 
 describe('resolveAndPatchCanonicalName', () => {
 	it('calls resolver with item name and patches the canonical name', async () => {

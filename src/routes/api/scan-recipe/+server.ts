@@ -1,12 +1,9 @@
 import { json, error } from '@sveltejs/kit';
-import { Effect, Layer, Logger } from 'effect';
-import { dev } from '$app/environment';
+import { Effect } from 'effect';
 import type { RequestHandler } from './$types';
 import { withRequestLogging } from '$lib/server/logging';
+import { appRuntime } from '$lib/server/runtime.js';
 import { RecipeScanner } from '$lib/domain/recipe/recipe-scanner.js';
-import { AIRecipeScanner } from '$lib/infrastructure/ai-recipe-scanner.js';
-
-const scannerLayer = Layer.succeed(RecipeScanner, AIRecipeScanner);
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
@@ -31,18 +28,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		useCase: 'extractRecipes'
 	};
 
-	const outcome = await Effect.runPromise(
+	const outcome = await appRuntime.runPromise(
 		Effect.match(
 			withRequestLogging(
 				Effect.gen(function* () {
 					const sc = yield* RecipeScanner;
 					return yield* sc.extractRecipes({ imageBase64, mimeType });
-				}).pipe(
-					Effect.withLogSpan('ai-recipe-scan'),
-					Effect.provide(scannerLayer)
-				),
+				}).pipe(Effect.withLogSpan('ai-recipe-scan')),
 				ctx
-			).pipe(Effect.provide(dev ? Logger.pretty : Logger.json)),
+			),
 			{
 				onFailure: (e) => {
 					if (e._tag === 'UnreadableImageError' || e._tag === 'NoItemsExtractedError') {

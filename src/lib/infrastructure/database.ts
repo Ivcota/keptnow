@@ -4,7 +4,7 @@ import type * as schema from '$lib/server/db/schema';
 
 export type DatabaseInstance = PostgresJsDatabase<typeof schema>;
 
-export const Database = Context.GenericTag<DatabaseInstance>('Database');
+export class Database extends Context.Tag('Database')<Database, DatabaseInstance>() {}
 
 export const DatabaseLive = Layer.effect(
 	Database,
