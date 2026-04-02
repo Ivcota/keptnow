@@ -61,7 +61,7 @@
 		]
 	},
 	"dependencies": {
-		"@ai-hero/sandcastle": "^0.1.6",
+		"@ai-hero/sandcastle": "^0.1.8",
 		"@ai-sdk/anthropic": "^3.0.64",
 		"ai": "^6.0.141",
 		"effect": "^3.21.0",
