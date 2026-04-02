@@ -34,55 +34,6 @@
 	const uncheckedItems = $derived(data.items.filter((i) => !isChecked(i.id)));
 	const checkedItems = $derived(data.items.filter((i) => isChecked(i.id)));
 
-	// Review modal state
-	type ReviewItem = {
-		localId: number;
-		name: string;
-		storageLocation: 'pantry' | 'fridge' | 'freezer';
-		quantityValue: number;
-		quantityUnit: 'count' | 'ml' | 'g';
-		expirationDate: string;
-	};
-
-	let showReview = $state(false);
-	let reviewItems = $state<ReviewItem[]>([]);
-
-	function openReviewOrSubmit() {
-		const checkedRecipeItems = checkedItems.filter((i) => i.sourceType === 'recipe');
-		if (checkedRecipeItems.length === 0) {
-			// No recipe items — submit immediately with empty recipe list
-			const form = document.getElementById('complete-form') as HTMLFormElement;
-			form.requestSubmit();
-			return;
-		}
-		reviewItems = checkedRecipeItems.map((item, idx) => ({
-			localId: idx,
-			name: item.displayName,
-			storageLocation: item.carriedStorageLocation,
-			quantityValue: item.quantity.value,
-			quantityUnit: item.quantity.unit,
-			expirationDate: ''
-		}));
-		showReview = true;
-	}
-
-	function cancelReview() {
-		showReview = false;
-		reviewItems = [];
-	}
-
-	const recipeItemsJson = $derived(
-		JSON.stringify(
-			reviewItems.map((item) => ({
-				name: item.name,
-				canonicalName: null,
-				storageLocation: item.storageLocation,
-				quantity: { value: item.quantityValue, unit: item.quantityUnit },
-				expirationDate: item.expirationDate ? item.expirationDate : null
-			}))
-		)
-	);
-
 	const hasCheckedItems = $derived(data.items.some((i) => isChecked(i.id)));
 </script>
 
@@ -191,113 +142,17 @@
 		</div>
 	{/if}
 
-	<!-- Hidden complete form -->
-	<form id="complete-form" method="POST" action="?/completeShopping" use:enhance>
-		<input type="hidden" name="recipeItemsJson" value={recipeItemsJson} />
-	</form>
-
 	<!-- Done shopping button -->
 	{#if hasCheckedItems}
 		<div class="fixed bottom-16 left-0 right-0 flex justify-center p-5">
-			<button
-				type="button"
-				onclick={openReviewOrSubmit}
-				class="w-full max-w-lg rounded-2xl bg-[#2c2416] px-6 py-4 text-base font-semibold text-white shadow-lg active:bg-[#3d3420]"
-			>
-				Done shopping
-			</button>
+			<form method="POST" action="?/completeShopping" use:enhance>
+				<button
+					type="submit"
+					class="w-full max-w-lg rounded-2xl bg-[#2c2416] px-6 py-4 text-base font-semibold text-white shadow-lg active:bg-[#3d3420]"
+				>
+					Done shopping
+				</button>
+			</form>
 		</div>
 	{/if}
 </main>
-
-<!-- Review modal for recipe items -->
-{#if showReview}
-	<div class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
-		<div class="w-full max-w-lg overflow-hidden rounded-t-3xl bg-white shadow-xl sm:rounded-3xl">
-			<div class="flex items-center justify-between px-6 pt-6 pb-4">
-				<h2 class="font-[Cormorant_Garamond,serif] text-2xl font-semibold text-[#2c2416]">
-					Review Items
-				</h2>
-				<button
-					type="button"
-					onclick={cancelReview}
-					class="rounded-full p-1 text-[#8a7a6a] hover:bg-[#f5f0ea]"
-					aria-label="Cancel"
-				>
-					<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<line x1="18" y1="6" x2="6" y2="18" />
-						<line x1="6" y1="6" x2="18" y2="18" />
-					</svg>
-				</button>
-			</div>
-
-			<div class="max-h-[60vh] overflow-y-auto px-6 pb-2">
-				{#each reviewItems as item (item.localId)}
-					<div class="mb-4 rounded-2xl border border-[#e8e2d9] bg-[#faf8f5] p-4">
-						<p class="mb-3 text-base font-semibold text-[#2c2416]">{item.name}</p>
-						<div class="flex flex-col gap-2">
-							<div class="flex items-center gap-3">
-								<label for="location-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Location</label>
-								<select
-									id="location-{item.localId}"
-									bind:value={item.storageLocation}
-									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-								>
-									<option value="pantry">Pantry</option>
-									<option value="fridge">Fridge</option>
-									<option value="freezer">Freezer</option>
-								</select>
-							</div>
-							<div class="flex items-center gap-3">
-								<label for="unit-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Unit</label>
-								<select
-									id="unit-{item.localId}"
-									bind:value={item.quantityUnit}
-									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-								>
-									<option value="count">count</option>
-									<option value="ml">ml</option>
-									<option value="g">g</option>
-								</select>
-							</div>
-							<div class="flex items-center gap-3">
-								<label for="qty-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Quantity</label>
-								<input
-									id="qty-{item.localId}"
-									type="number"
-									bind:value={item.quantityValue}
-									min="0.01"
-									step="any"
-									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-								/>
-							</div>
-							<div class="flex items-center gap-3">
-								<label for="exp-{item.localId}" class="w-28 text-sm text-[#8a7a6a]">Expires</label>
-								<input
-									id="exp-{item.localId}"
-									type="date"
-									bind:value={item.expirationDate}
-									class="flex-1 rounded-lg border border-[#e8e2d9] bg-white px-3 py-1.5 text-sm text-[#2c2416]"
-								/>
-							</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-
-			<div class="px-6 pb-8 pt-4">
-				<button
-					type="button"
-					onclick={() => {
-						showReview = false;
-						const form = document.getElementById('complete-form') as HTMLFormElement;
-						form.requestSubmit();
-					}}
-					class="w-full rounded-2xl bg-[#2c2416] px-6 py-4 text-base font-semibold text-white shadow-sm active:bg-[#3d3420]"
-				>
-					Add {reviewItems.length} item{reviewItems.length === 1 ? '' : 's'} to inventory
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
