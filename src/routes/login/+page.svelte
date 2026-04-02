@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
-	let mode: 'signin' | 'signup' | 'forgot' = $state('signin');
+	let { form, data }: { form: ActionData; data: PageData } = $props();
+	let mode: 'signin' | 'signup' | 'forgot' = $state(
+		(data.initialMode as 'signin' | 'forgot') ?? 'signin'
+	);
 </script>
 
 <div class="flex min-h-screen">

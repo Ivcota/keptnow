@@ -86,9 +86,18 @@
 				</div>
 
 				{#if form?.message}
-					<p class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
-						{form.message}
-					</p>
+					<div
+						class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
+					>
+						<p>{form.message}</p>
+						{#if (form as { tokenError?: boolean })?.tokenError}
+							<p class="mt-1">
+								<a href="/login?forgot=1" class="font-medium underline hover:text-red-800"
+									>Request a new reset email</a
+								>
+							</p>
+						{/if}
+					</div>
 				{/if}
 
 				<button

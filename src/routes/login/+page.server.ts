@@ -8,7 +8,8 @@ export const load: PageServerLoad = async (event) => {
 		return redirect(302, '/inventory');
 	}
 	return {
-		redirectTo: event.url.searchParams.get('redirectTo') ?? '/inventory'
+		redirectTo: event.url.searchParams.get('redirectTo') ?? '/inventory',
+		initialMode: event.url.searchParams.has('forgot') ? 'forgot' : 'signin'
 	};
 };
 

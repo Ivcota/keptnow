@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const { mockResetPassword } = vi.hoisted(() => ({ mockResetPassword: vi.fn() }));
 
@@ -29,6 +29,10 @@ function makeUrl(token: string) {
 }
 
 describe('/reset-password server actions', () => {
+	beforeEach(() => {
+		mockResetPassword.mockReset();
+	});
+
 	it('returns validation error when passwords do not match', async () => {
 		const result = await (actions as Record<string, ResetAction>).resetPassword({
 			request: makeRequest('password123', 'different456'),
@@ -65,6 +69,26 @@ describe('/reset-password server actions', () => {
 			request: makeRequest('newpassword123', 'newpassword123'),
 			url: new URL('http://localhost/reset-password')
 		});
+		expect(result).toMatchObject({ status: 400, data: { message: expect.any(String), tokenError: true } });
+	});
+
+	it('returns tokenError flag when auth.api.resetPassword throws APIError (invalid/expired token)', async () => {
+		const { APIError } = await import('better-auth/api');
+		mockResetPassword.mockRejectedValueOnce(new APIError('BAD_REQUEST', { message: 'Invalid token' }));
+
+		const result = await (actions as Record<string, ResetAction>).resetPassword({
+			request: makeRequest('newpassword123', 'newpassword123'),
+			url: makeUrl('bad-token')
+		});
+		expect(result).toMatchObject({ status: 400, data: { message: expect.any(String), tokenError: true } });
+	});
+
+	it('does not return tokenError for validation errors (mismatched passwords)', async () => {
+		const result = await (actions as Record<string, ResetAction>).resetPassword({
+			request: makeRequest('password123', 'different456'),
+			url: makeUrl('valid-token')
+		});
 		expect(result).toMatchObject({ status: 400, data: { message: expect.any(String) } });
+		expect((result as { data: { tokenError?: boolean } }).data.tokenError).toBeFalsy();
 	});
 });
