@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import type { PageData, ActionData } from './$types';
 	import { getExpirationStatus } from '$lib/domain/inventory/expiration.js';
 	import { compressImage } from '$lib/compress-image.js';
@@ -167,6 +168,12 @@
 		scanError = null;
 		fileInput?.click();
 	}
+
+	$effect(() => {
+		if (page.url.searchParams.get('scan') === 'true' && fileInput) {
+			triggerScan();
+		}
+	});
 
 	async function handleFileSelected(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
