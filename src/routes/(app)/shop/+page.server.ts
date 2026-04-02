@@ -8,7 +8,6 @@ import {
 	setShoppingListItemChecked,
 	completeShoppingTrip
 } from '$lib/domain/shopping-list/use-cases';
-import type { CreateFoodItemInput } from '$lib/domain/inventory/food-item';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
@@ -53,31 +52,15 @@ export const actions: Actions = {
 		if (!outcome.ok) return fail(outcome.status, { message: outcome.message });
 	},
 
-	completeShopping: async ({ request, locals }) => {
+	completeShopping: async ({ locals }) => {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
 		const ctx = { userId, requestId: locals.requestId, route: '/shop' };
-		const formData = await request.formData();
-		const recipeItemsRaw = formData.get('recipeItemsJson')?.toString() ?? '[]';
-
-		let recipeItems: CreateFoodItemInput[];
-		try {
-			recipeItems = JSON.parse(recipeItemsRaw);
-			if (!Array.isArray(recipeItems)) throw new Error('Not an array');
-		} catch {
-			return fail(400, { message: 'Invalid recipe items JSON' });
-		}
-
-		// Parse expirationDate strings back to Date objects
-		recipeItems = recipeItems.map((item) => ({
-			...item,
-			expirationDate: item.expirationDate ? new Date(item.expirationDate as unknown as string) : null
-		}));
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(completeShoppingTrip(userId, recipeItems), {
+				withRequestLogging(completeShoppingTrip(userId), {
 					...ctx,
 					useCase: 'completeShoppingTrip'
 				}),

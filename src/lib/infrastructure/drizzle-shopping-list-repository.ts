@@ -170,7 +170,7 @@ export const DrizzleShoppingListRepository = Layer.effect(
 					try: () =>
 						db
 							.delete(shoppingListItem)
-							.where(eq(shoppingListItem.userId, userId))
+							.where(and(eq(shoppingListItem.userId, userId), eq(shoppingListItem.checked, true)))
 							.then(() => undefined),
 					catch: (e) =>
 						new ShoppingListRepositoryError({
