@@ -73,6 +73,6 @@ export const actions: Actions = {
 
 		if (!outcome.ok) return fail(500, { message: 'Failed to complete shopping trip' });
 
-		redirect(303, '/shop');
+		redirect(303, '/shop?completed=true');
 	}
 };
