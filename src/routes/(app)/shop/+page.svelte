@@ -1,10 +1,19 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { formatQuantity } from '$lib/format-quantity.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	let showReceiptModal = $state(page.url.searchParams.get('completed') === 'true');
+
+	function skipReceiptScan() {
+		showReceiptModal = false;
+		goto('/shop', { replaceState: true });
+	}
 
 	// Optimistic overrides: id → intended checked state, set immediately on click
 	const optimisticOverrides = $state(new Map<number, boolean>());
@@ -156,3 +165,32 @@
 		</div>
 	{/if}
 </main>
+
+<!-- Post-trip receipt scan modal -->
+{#if showReceiptModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+		<div class="w-full max-w-sm rounded-3xl bg-[#f8f6f3] p-8 shadow-xl">
+			<h2 class="mb-3 font-[Cormorant_Garamond,serif] text-2xl font-semibold text-[#2c2416]">
+				Shopping done!
+			</h2>
+			<p class="mb-8 text-[#5a4a3a]">
+				Scan your receipt to update your inventory while it's fresh.
+			</p>
+			<div class="flex flex-col gap-3">
+				<a
+					href="/inventory?scan=true"
+					class="block w-full rounded-2xl bg-[#2c2416] px-6 py-4 text-center text-base font-semibold text-white shadow-md active:bg-[#3d3420]"
+				>
+					Scan Receipt
+				</a>
+				<button
+					type="button"
+					onclick={skipReceiptScan}
+					class="w-full rounded-2xl border border-[#d8cfc4] bg-white px-6 py-4 text-base font-semibold text-[#5a4a3a] active:bg-[#f0ece6]"
+				>
+					Skip for now
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
