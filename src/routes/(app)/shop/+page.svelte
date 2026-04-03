@@ -10,6 +10,12 @@
 
 	let showReceiptModal = $state(page.url.searchParams.get('completed') === 'true');
 
+	$effect(() => {
+		if (page.url.searchParams.get('completed') === 'true') {
+			showReceiptModal = true;
+		}
+	});
+
 	function skipReceiptScan() {
 		showReceiptModal = false;
 		goto('/shop', { replaceState: true });
