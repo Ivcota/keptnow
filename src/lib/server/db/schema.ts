@@ -86,7 +86,7 @@ export const shoppingListItem = pgTable('shopping_list_item', {
 	quantityUnit: text('quantity_unit').notNull(),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 }, (t) => [
-	unique().on(t.userId, t.canonicalKey)
+	unique().on(t.householdId, t.canonicalKey)
 ]);
 
 export const canonicalIngredient = pgTable('canonical_ingredient', {

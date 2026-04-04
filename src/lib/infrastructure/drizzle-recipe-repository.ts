@@ -71,25 +71,29 @@ async function fetchWithIngredients(
 	);
 }
 
+function scopeCondition(householdId: string | null, userId: string) {
+	return householdId ? eq(recipe.householdId, householdId) : eq(recipe.userId, userId);
+}
+
 export const DrizzleRecipeRepository = Layer.effect(
 	RecipeRepository,
 	Effect.gen(function* () {
 		const db = yield* Database;
 		return {
-			findAll: (userId) =>
+			findAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: async () => {
 						const rows = await db
 							.select()
 							.from(recipe)
-							.where(and(eq(recipe.userId, userId), isNull(recipe.trashedAt)));
+							.where(and(scopeCondition(householdId, userId), isNull(recipe.trashedAt)));
 						return fetchWithIngredients(db, rows);
 					},
 					catch: (e) =>
 						new RecipeRepositoryError({ message: 'Failed to fetch recipes', cause: e })
 				}),
 
-			findTrashed: (userId, since) =>
+			findTrashed: (householdId, userId, since) =>
 				Effect.tryPromise({
 					try: async () => {
 						const rows = await db
@@ -97,7 +101,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 							.from(recipe)
 							.where(
 								and(
-									eq(recipe.userId, userId),
+									scopeCondition(householdId, userId),
 									isNotNull(recipe.trashedAt),
 									gte(recipe.trashedAt, since)
 								)
@@ -108,13 +112,13 @@ export const DrizzleRecipeRepository = Layer.effect(
 						new RecipeRepositoryError({ message: 'Failed to fetch trashed recipes', cause: e })
 				}),
 
-			create: (userId, input) =>
+			create: (householdId, userId, input) =>
 				Effect.tryPromise({
 					try: () =>
 						db.transaction(async (tx) => {
 							const [recipeRow] = await tx
 								.insert(recipe)
-								.values({ userId, name: input.name })
+								.values({ userId, householdId, name: input.name })
 								.returning();
 
 							const ingredientRows =
@@ -153,7 +157,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 						new RecipeRepositoryError({ message: 'Failed to create recipe', cause: e })
 				}),
 
-			update: (userId, input) =>
+			update: (householdId, userId, input) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -161,7 +165,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								.select()
 								.from(recipe)
 								.where(
-									and(eq(recipe.id, input.id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+									and(eq(recipe.id, input.id), scopeCondition(householdId, userId), isNull(recipe.trashedAt))
 								),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
@@ -177,7 +181,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								const [recipeRow] = await tx
 									.update(recipe)
 									.set({ name: input.name, updatedAt: new Date() })
-									.where(and(eq(recipe.id, input.id), eq(recipe.userId, userId)))
+									.where(and(eq(recipe.id, input.id), scopeCondition(householdId, userId)))
 									.returning();
 
 								await tx
@@ -225,7 +229,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 					});
 				}),
 
-			trash: (userId, id) =>
+			trash: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -233,7 +237,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								.select()
 								.from(recipe)
 								.where(
-									and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+									and(eq(recipe.id, id), scopeCondition(householdId, userId), isNull(recipe.trashedAt))
 								),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
@@ -248,13 +252,13 @@ export const DrizzleRecipeRepository = Layer.effect(
 							db
 								.update(recipe)
 								.set({ pinnedAt: null, trashedAt: new Date(), updatedAt: new Date() })
-								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+								.where(and(eq(recipe.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to trash recipe', cause: e })
 					});
 				}),
 
-			restore: (userId, id) =>
+			restore: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -262,7 +266,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								.select()
 								.from(recipe)
 								.where(
-									and(eq(recipe.id, id), eq(recipe.userId, userId), isNotNull(recipe.trashedAt))
+									and(eq(recipe.id, id), scopeCondition(householdId, userId), isNotNull(recipe.trashedAt))
 								),
 						catch: (e) =>
 							new RecipeRepositoryError({
@@ -290,7 +294,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 							db
 								.update(recipe)
 								.set({ trashedAt: null, updatedAt: new Date() })
-								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+								.where(and(eq(recipe.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to restore recipe', cause: e })
 					});
@@ -299,7 +303,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 					return originalRecipe;
 				}),
 
-			pin: (userId, id) =>
+			pin: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -307,7 +311,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								.select()
 								.from(recipe)
 								.where(
-									and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+									and(eq(recipe.id, id), scopeCondition(householdId, userId), isNull(recipe.trashedAt))
 								),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
@@ -322,13 +326,13 @@ export const DrizzleRecipeRepository = Layer.effect(
 							db
 								.update(recipe)
 								.set({ pinnedAt: new Date(), updatedAt: new Date() })
-								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+								.where(and(eq(recipe.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to pin recipe', cause: e })
 					});
 				}),
 
-			unpin: (userId, id) =>
+			unpin: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -336,7 +340,7 @@ export const DrizzleRecipeRepository = Layer.effect(
 								.select()
 								.from(recipe)
 								.where(
-									and(eq(recipe.id, id), eq(recipe.userId, userId), isNull(recipe.trashedAt))
+									and(eq(recipe.id, id), scopeCondition(householdId, userId), isNull(recipe.trashedAt))
 								),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to find recipe', cause: e })
@@ -351,19 +355,19 @@ export const DrizzleRecipeRepository = Layer.effect(
 							db
 								.update(recipe)
 								.set({ pinnedAt: null, updatedAt: new Date() })
-								.where(and(eq(recipe.id, id), eq(recipe.userId, userId))),
+								.where(and(eq(recipe.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new RecipeRepositoryError({ message: 'Failed to unpin recipe', cause: e })
 					});
 				}),
 
-			unpinAll: (userId) =>
+			unpinAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.update(recipe)
 							.set({ pinnedAt: null, updatedAt: new Date() })
-							.where(and(eq(recipe.userId, userId), isNotNull(recipe.pinnedAt))),
+							.where(and(scopeCondition(householdId, userId), isNotNull(recipe.pinnedAt))),
 					catch: (e) =>
 						new RecipeRepositoryError({ message: 'Failed to unpin all recipes', cause: e })
 				}).pipe(Effect.asVoid)

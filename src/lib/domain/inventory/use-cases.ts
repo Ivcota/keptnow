@@ -13,6 +13,7 @@ import type { Quantity } from '$lib/domain/shared/quantity.js';
 export const RESTORE_WINDOW_HOURS = 24;
 
 export const createFoodItems = (
+	householdId: string | null,
 	userId: string,
 	inputs: CreateFoodItemInput[]
 ): Effect.Effect<
@@ -25,25 +26,27 @@ export const createFoodItems = (
 			yield* validateFoodItemFields(input);
 		}
 		const repo = yield* FoodItemRepository;
-		return yield* repo.bulkCreate(userId, inputs);
+		return yield* repo.bulkCreate(householdId, userId, inputs);
 	});
 
 export const createFoodItem = (
+	householdId: string | null,
 	userId: string,
 	input: CreateFoodItemInput
 ): Effect.Effect<FoodItem, FoodItemValidationError | FoodItemRepositoryError, FoodItemRepository> =>
 	Effect.gen(function* () {
 		yield* validateFoodItemFields(input);
 		const repo = yield* FoodItemRepository;
-		return yield* repo.create(userId, input);
+		return yield* repo.create(householdId, userId, input);
 	});
 
 export const findAllFoodItems = (
+	householdId: string | null,
 	userId: string
 ): Effect.Effect<FoodItem[], FoodItemRepositoryError, FoodItemRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* FoodItemRepository;
-		return yield* repo.findAll(userId);
+		return yield* repo.findAll(householdId, userId);
 	});
 
 function validateFoodItemFields(input: {
@@ -63,6 +66,7 @@ function validateFoodItemFields(input: {
 }
 
 export const updateFoodItem = (
+	householdId: string | null,
 	userId: string,
 	input: UpdateFoodItemInput
 ): Effect.Effect<
@@ -73,19 +77,21 @@ export const updateFoodItem = (
 	Effect.gen(function* () {
 		yield* validateFoodItemFields(input);
 		const repo = yield* FoodItemRepository;
-		return yield* repo.update(userId, input);
+		return yield* repo.update(householdId, userId, input);
 	});
 
 export const trashFoodItem = (
+	householdId: string | null,
 	userId: string,
 	id: number
 ): Effect.Effect<void, FoodItemRepositoryError | FoodItemNotFoundError, FoodItemRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* FoodItemRepository;
-		yield* repo.trash(userId, id);
+		yield* repo.trash(householdId, userId, id);
 	});
 
 export const restoreFoodItem = (
+	householdId: string | null,
 	userId: string,
 	id: number,
 	trashedAt: Date,
@@ -102,26 +108,29 @@ export const restoreFoodItem = (
 			yield* Effect.fail(new FoodItemRestoreExpiredError({ id }));
 		}
 		const repo = yield* FoodItemRepository;
-		yield* repo.restore(userId, id);
+		yield* repo.restore(householdId, userId, id);
 	});
 
 export const findTrashedFoodItems = (
+	householdId: string | null,
 	userId: string
 ): Effect.Effect<FoodItem[], FoodItemRepositoryError, FoodItemRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* FoodItemRepository;
-		return yield* repo.findTrashed(userId);
+		return yield* repo.findTrashed(householdId, userId);
 	});
 
 export const trashAllFoodItems = (
+	householdId: string | null,
 	userId: string
 ): Effect.Effect<void, FoodItemRepositoryError, FoodItemRepository> =>
 	Effect.gen(function* () {
 		const repo = yield* FoodItemRepository;
-		yield* repo.trashAll(userId);
+		yield* repo.trashAll(householdId, userId);
 	});
 
 export const resolveAndPatchCanonicalName = (
+	householdId: string | null,
 	userId: string,
 	id: number,
 	name: string
@@ -130,5 +139,5 @@ export const resolveAndPatchCanonicalName = (
 		const resolver = yield* CanonicalIngredientResolver;
 		const ingredient = yield* resolver.resolve(name);
 		const repo = yield* FoodItemRepository;
-		yield* repo.patchCanonicalName(userId, id, ingredient.name);
+		yield* repo.patchCanonicalName(householdId, userId, id, ingredient.name);
 	});

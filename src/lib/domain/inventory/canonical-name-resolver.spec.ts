@@ -7,6 +7,7 @@ import { resolveAndPatchCanonicalName } from './use-cases.js';
 import { FoodItemRepositoryError } from './errors.js';
 
 const TEST_USER_ID = 'user-1';
+const TEST_HOUSEHOLD_ID = 'household-1';
 
 const makeIngredient = (overrides: Partial<CanonicalIngredient> = {}): CanonicalIngredient => ({
 	id: 1,
@@ -40,20 +41,20 @@ describe('resolveAndPatchCanonicalName', () => {
 		const patchSpy = vi.fn(() => Effect.succeed(undefined as void));
 
 		await Effect.runPromise(
-			resolveAndPatchCanonicalName(TEST_USER_ID, 1, 'Whole Milk').pipe(
+			resolveAndPatchCanonicalName(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, 'Whole Milk').pipe(
 				Effect.provide(makeResolver({ resolve: () => Effect.succeed(makeIngredient({ name: 'milk' })) })),
 				Effect.provide(makeRepo({ patchCanonicalName: patchSpy }))
 			)
 		);
 
-		expect(patchSpy).toHaveBeenCalledWith(TEST_USER_ID, 1, 'milk');
+		expect(patchSpy).toHaveBeenCalledWith(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, 'milk');
 	});
 
 	it('propagates resolver error so caller can swallow it', async () => {
 		const error = new Error('AI unavailable');
 
 		const result = await Effect.runPromise(
-			resolveAndPatchCanonicalName(TEST_USER_ID, 2, 'Chicken Breast').pipe(
+			resolveAndPatchCanonicalName(TEST_HOUSEHOLD_ID, TEST_USER_ID, 2, 'Chicken Breast').pipe(
 				Effect.provide(makeResolver({ resolve: () => Effect.fail(error) })),
 				Effect.provide(makeRepo()),
 				Effect.flip
@@ -67,7 +68,7 @@ describe('resolveAndPatchCanonicalName', () => {
 		const patchSpy = vi.fn(() => Effect.succeed(undefined as void));
 
 		await Effect.runPromise(
-			resolveAndPatchCanonicalName(TEST_USER_ID, 3, 'Eggs').pipe(
+			resolveAndPatchCanonicalName(TEST_HOUSEHOLD_ID, TEST_USER_ID, 3, 'Eggs').pipe(
 				Effect.provide(makeResolver({ resolve: () => Effect.fail(new Error('fail')) })),
 				Effect.provide(makeRepo({ patchCanonicalName: patchSpy })),
 				Effect.catchAll(() => Effect.void)
@@ -81,7 +82,7 @@ describe('resolveAndPatchCanonicalName', () => {
 		const repoError = new FoodItemRepositoryError({ message: 'DB down', cause: null });
 
 		const result = await Effect.runPromise(
-			resolveAndPatchCanonicalName(TEST_USER_ID, 4, 'Butter').pipe(
+			resolveAndPatchCanonicalName(TEST_HOUSEHOLD_ID, TEST_USER_ID, 4, 'Butter').pipe(
 				Effect.provide(makeResolver({ resolve: () => Effect.succeed(makeIngredient({ name: 'butter' })) })),
 				Effect.provide(makeRepo({ patchCanonicalName: () => Effect.fail(repoError) })),
 				Effect.flip
