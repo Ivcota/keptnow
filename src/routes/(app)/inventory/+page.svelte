@@ -6,6 +6,7 @@
 	import { compressImage } from '$lib/compress-image.js';
 	import type { StorageLocation, FoodItem } from '$lib/domain/inventory/food-item.js';
 	import { formatQuantity } from '$lib/format-quantity.js';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -20,10 +21,19 @@
 	let addQuantityUnit = $state('count');
 	let addExpirationDate = $state('');
 	let editingId = $state<number | null>(null);
-	let addFormOpen = $state(false);
-	$effect(() => {
-		if (data.items.length === 0) addFormOpen = true;
-	});
+	// Bottom sheet state
+	let sheetOpen = $state(false);
+	let sheetMode = $state<'options' | 'manual'>('options');
+
+	function openSheet(mode: 'options' | 'manual' = 'options') {
+		sheetMode = mode;
+		sheetOpen = true;
+	}
+
+	function closeSheet() {
+		sheetOpen = false;
+		sheetMode = 'options';
+	}
 
 	function resetAddForm() {
 		addName = '';
@@ -442,7 +452,7 @@
 												addName = restockItem.foodItem.name;
 												addExpirationDate = '';
 												activeTab = restockItem.foodItem.storageLocation;
-												addFormOpen = true;
+												openSheet('manual');
 											}
 											update();
 										};
@@ -519,20 +529,19 @@
 			</section>
 		{/if}
 	{:else}
-		<!-- Add Item Form / Receipt Review -->
-		<section class="mb-10 rounded-xl border border-[#e8e2d9] bg-white">
-			<!-- Hidden file input for camera/photo library -->
-			<input
-				bind:this={fileInput}
-				type="file"
-				accept="image/*"
-				capture="environment"
-				class="hidden"
-				onchange={handleFileSelected}
-			/>
+		<!-- Hidden file input for camera/photo library (kept for ?scan=true deep-link compat) -->
+		<input
+			bind:this={fileInput}
+			type="file"
+			accept="image/*"
+			capture="environment"
+			class="hidden"
+			onchange={handleFileSelected}
+		/>
 
-			{#if reviewItems.length > 0}
-				<!-- Receipt review list -->
+		<!-- Receipt Review -->
+		{#if reviewItems.length > 0}
+			<section class="mb-10 rounded-xl border border-[#e8e2d9] bg-white">
 				<div class="p-6 sm:p-8">
 					<div class="mb-4 flex items-center justify-between">
 						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
@@ -657,187 +666,8 @@
 						</div>
 					</form>
 				</div>
-			{:else}
-				<!-- Collapsible add form header -->
-				<button
-					type="button"
-					onclick={() => (addFormOpen = !addFormOpen)}
-					class="flex w-full items-center justify-between p-6 sm:px-8 sm:py-6"
-				>
-					<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">Add Item</h3>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						class="text-[#8a8279] transition-transform duration-200 {addFormOpen
-							? 'rotate-180'
-							: ''}"
-						aria-hidden="true"
-					>
-						<polyline points="6 9 12 15 18 9" />
-					</svg>
-				</button>
-
-				{#if addFormOpen}
-					<div class="px-6 pt-0 pb-6 sm:px-8 sm:pb-8">
-						<!-- Scan Receipt button -->
-						<div class="mb-4 flex items-center justify-end">
-							<button
-								type="button"
-								onclick={triggerScan}
-								disabled={scanning}
-								class="text-sm font-medium text-[#c4a46a] transition-colors hover:text-[#d4b87a] disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{scanning ? 'Scanning…' : 'Scan Receipt'}
-							</button>
-						</div>
-
-						<!-- Shimmer loading bar -->
-						{#if scanning}
-							<div class="mb-4 h-1 w-full overflow-hidden rounded-full bg-[#e8e2d9]">
-								<div class="scan-shimmer h-full w-1/3 rounded-full bg-[#c4a46a]"></div>
-							</div>
-						{/if}
-
-						{#if scanError}
-							<p
-								class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600"
-							>
-								{scanError}
-							</p>
-						{/if}
-
-						<form
-							method="post"
-							action="?/create"
-							use:enhance={() => {
-								return ({ result, update }) => {
-									if (result.type !== 'failure') resetAddForm();
-									update({ reset: false });
-								};
-							}}
-							class="flex flex-col gap-4"
-						>
-							<!-- Name -->
-							<div class="flex flex-col gap-1.5">
-								<label for="name" class="text-sm font-medium text-[#3a3632]">Name</label>
-								<input
-									id="name"
-									type="text"
-									name="name"
-									bind:value={addName}
-									required
-									placeholder="e.g. Milk, Eggs, Pasta"
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none placeholder:text-[#b5aea4] focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								/>
-							</div>
-
-							<div class="grid grid-cols-2 gap-4">
-								<!-- Storage location — pre-selects from active tab, stays after save -->
-								<div class="flex flex-col gap-1.5">
-									<label for="storageLocation" class="text-sm font-medium text-[#3a3632]">
-										Storage Location
-									</label>
-									<select
-										id="storageLocation"
-										name="storageLocation"
-										value={addStorageLocation}
-										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-									>
-										<option value="pantry">Pantry</option>
-										<option value="fridge">Fridge</option>
-										<option value="freezer">Freezer</option>
-									</select>
-								</div>
-
-								<!-- Unit -->
-								<div class="flex flex-col gap-1.5">
-									<label for="quantityUnit" class="text-sm font-medium text-[#3a3632]">Unit</label>
-									<select
-										id="quantityUnit"
-										name="quantityUnit"
-										bind:value={addQuantityUnit}
-										class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-									>
-										<optgroup label="Count">
-											<option value="count">count</option>
-											<option value="each">each</option>
-											<option value="dozen">dozen</option>
-										</optgroup>
-										<optgroup label="Volume">
-											<option value="tsp">tsp</option>
-											<option value="tbsp">tbsp</option>
-											<option value="fl oz">fl oz</option>
-											<option value="cup">cup</option>
-											<option value="pt">pint</option>
-											<option value="qt">quart</option>
-											<option value="gal">gallon</option>
-											<option value="ml">ml</option>
-											<option value="l">liter</option>
-										</optgroup>
-										<optgroup label="Weight">
-											<option value="oz">oz</option>
-											<option value="lb">lb</option>
-											<option value="g">g</option>
-											<option value="kg">kg</option>
-										</optgroup>
-									</select>
-								</div>
-							</div>
-
-							<!-- Quantity value -->
-							<div class="flex flex-col gap-1.5">
-								<label for="quantityValue" class="text-sm font-medium text-[#3a3632]">Quantity</label>
-								<input
-									id="quantityValue"
-									type="number"
-									name="quantityValue"
-									min="0.01"
-									step="any"
-									bind:value={addQuantityValue}
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								/>
-							</div>
-
-							<!-- Expiration date (optional) -->
-							<div class="flex flex-col gap-1.5">
-								<label for="expirationDate" class="text-sm font-medium text-[#3a3632]">
-									Expiration date <span class="font-normal text-[#8a8279]">(optional)</span>
-								</label>
-								<input
-									id="expirationDate"
-									type="date"
-									name="expirationDate"
-									bind:value={addExpirationDate}
-									class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
-								/>
-							</div>
-
-							<div class="flex items-center gap-4">
-								<button
-									type="submit"
-									class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0"
-								>
-									Add Item
-								</button>
-								{#if form?.message}
-									<p
-										class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600"
-									>
-										{form.message}
-									</p>
-								{/if}
-							</div>
-						</form>
-					</div>
-				{/if}
-			{/if}
-		</section>
+			</section>
+		{/if}
 
 		<!-- Active items list -->
 		{#if filteredItems.length > 0}
@@ -1087,6 +917,328 @@
 		{/if}
 	{/if}
 </main>
+
+<!-- FAB: Add Items (only shown on inventory tabs, not trash/restock) -->
+{#if activeTab !== 'trash' && activeTab !== 'restock' && reviewItems.length === 0}
+	<button
+		type="button"
+		onclick={() => openSheet()}
+		aria-label="Add items to inventory"
+		class="fixed bottom-20 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#c4a46a] px-5 py-3 text-sm font-semibold text-[#1a1714] shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:translate-x-[-50%] hover:bg-[#d4b87a] hover:shadow-xl active:translate-y-0 active:translate-x-[-50%]"
+	>
+		<svg
+			width="18"
+			height="18"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2.5"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"
+		>
+			<line x1="12" y1="5" x2="12" y2="19" />
+			<line x1="5" y1="12" x2="19" y2="12" />
+		</svg>
+		Add Items
+	</button>
+{/if}
+
+<!-- Add Items Bottom Sheet -->
+<BottomSheet open={sheetOpen} ondismiss={closeSheet}>
+	{#if sheetMode === 'options'}
+		<!-- Three entry point options -->
+		<div class="px-6 pb-8 pt-4">
+			<h2 class="mb-6 font-[Cormorant_Garamond,serif] text-xl font-bold text-[#1a1714]">
+				Add Items
+			</h2>
+			<ul class="flex flex-col gap-3">
+				<!-- Scan Food Photo (placeholder) -->
+				<li>
+					<button
+						type="button"
+						disabled
+						class="flex w-full items-center gap-4 rounded-xl border border-[#e8e2d9] bg-white px-5 py-4 text-left opacity-50 cursor-not-allowed"
+						aria-label="Scan Food Photo (coming soon)"
+					>
+						<span
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f0ebe4]"
+							aria-hidden="true"
+						>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="#c4a46a"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"
+								/>
+								<circle cx="12" cy="13" r="4" />
+							</svg>
+						</span>
+						<span>
+							<span class="block text-sm font-semibold text-[#1a1714]">Scan Food Photo</span>
+							<span class="block text-xs text-[#8a8279]">Coming soon</span>
+						</span>
+					</button>
+				</li>
+
+				<!-- Scan Receipt (placeholder) -->
+				<li>
+					<button
+						type="button"
+						disabled
+						class="flex w-full items-center gap-4 rounded-xl border border-[#e8e2d9] bg-white px-5 py-4 text-left opacity-50 cursor-not-allowed"
+						aria-label="Scan Receipt (coming soon)"
+					>
+						<span
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f0ebe4]"
+							aria-hidden="true"
+						>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="#c4a46a"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polyline points="9 11 12 14 22 4" />
+								<path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+							</svg>
+						</span>
+						<span>
+							<span class="block text-sm font-semibold text-[#1a1714]">Scan Receipt</span>
+							<span class="block text-xs text-[#8a8279]">Coming soon</span>
+						</span>
+					</button>
+				</li>
+
+				<!-- Enter Manually (functional) -->
+				<li>
+					<button
+						type="button"
+						onclick={() => (sheetMode = 'manual')}
+						class="flex w-full items-center gap-4 rounded-xl border border-[#e8e2d9] bg-white px-5 py-4 text-left transition-all duration-150 hover:border-[#c4a46a66] hover:bg-[#faf8f5] hover:shadow-sm"
+					>
+						<span
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f0ebe4]"
+							aria-hidden="true"
+						>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="#c4a46a"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+								<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+							</svg>
+						</span>
+						<span>
+							<span class="block text-sm font-semibold text-[#1a1714]">Enter Manually</span>
+							<span class="block text-xs text-[#8a8279]">Type in item details</span>
+						</span>
+						<svg
+							class="ml-auto text-[#b5aea4]"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="9 18 15 12 9 6" />
+						</svg>
+					</button>
+				</li>
+			</ul>
+		</div>
+	{:else}
+		<!-- Manual add form -->
+		<div class="px-6 pb-8 pt-4">
+			<div class="mb-5 flex items-center gap-3">
+				<button
+					type="button"
+					onclick={() => (sheetMode = 'options')}
+					class="flex items-center gap-1 text-sm text-[#8a8279] hover:text-[#3a3632]"
+					aria-label="Back to options"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<polyline points="15 18 9 12 15 6" />
+					</svg>
+					Back
+				</button>
+				<h2 class="font-[Cormorant_Garamond,serif] text-xl font-bold text-[#1a1714]">
+					Enter Manually
+				</h2>
+			</div>
+
+			<!-- Shimmer loading bar (shown if scanning in background) -->
+			{#if scanning}
+				<div class="mb-4 h-1 w-full overflow-hidden rounded-full bg-[#e8e2d9]">
+					<div class="scan-shimmer h-full w-1/3 rounded-full bg-[#c4a46a]"></div>
+				</div>
+			{/if}
+
+			{#if scanError}
+				<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
+					{scanError}
+				</p>
+			{/if}
+
+			<form
+				method="post"
+				action="?/create"
+				use:enhance={() => {
+					return ({ result, update }) => {
+						if (result.type !== 'failure') {
+							resetAddForm();
+							closeSheet();
+						}
+						update({ reset: false });
+					};
+				}}
+				class="flex flex-col gap-4"
+			>
+				<!-- Name -->
+				<div class="flex flex-col gap-1.5">
+					<label for="sheet-name" class="text-sm font-medium text-[#3a3632]">Name</label>
+					<input
+						id="sheet-name"
+						type="text"
+						name="name"
+						bind:value={addName}
+						required
+						placeholder="e.g. Milk, Eggs, Pasta"
+						class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none placeholder:text-[#b5aea4] focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+					/>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<!-- Storage location -->
+					<div class="flex flex-col gap-1.5">
+						<label for="sheet-storageLocation" class="text-sm font-medium text-[#3a3632]">
+							Storage
+						</label>
+						<select
+							id="sheet-storageLocation"
+							name="storageLocation"
+							value={addStorageLocation}
+							class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+						>
+							<option value="pantry">Pantry</option>
+							<option value="fridge">Fridge</option>
+							<option value="freezer">Freezer</option>
+						</select>
+					</div>
+
+					<!-- Unit -->
+					<div class="flex flex-col gap-1.5">
+						<label for="sheet-quantityUnit" class="text-sm font-medium text-[#3a3632]">Unit</label>
+						<select
+							id="sheet-quantityUnit"
+							name="quantityUnit"
+							bind:value={addQuantityUnit}
+							class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+						>
+							<optgroup label="Count">
+								<option value="count">count</option>
+								<option value="each">each</option>
+								<option value="dozen">dozen</option>
+							</optgroup>
+							<optgroup label="Volume">
+								<option value="tsp">tsp</option>
+								<option value="tbsp">tbsp</option>
+								<option value="fl oz">fl oz</option>
+								<option value="cup">cup</option>
+								<option value="pt">pint</option>
+								<option value="qt">quart</option>
+								<option value="gal">gallon</option>
+								<option value="ml">ml</option>
+								<option value="l">liter</option>
+							</optgroup>
+							<optgroup label="Weight">
+								<option value="oz">oz</option>
+								<option value="lb">lb</option>
+								<option value="g">g</option>
+								<option value="kg">kg</option>
+							</optgroup>
+						</select>
+					</div>
+				</div>
+
+				<!-- Quantity value -->
+				<div class="flex flex-col gap-1.5">
+					<label for="sheet-quantityValue" class="text-sm font-medium text-[#3a3632]">
+						Quantity
+					</label>
+					<input
+						id="sheet-quantityValue"
+						type="number"
+						name="quantityValue"
+						min="0.01"
+						step="any"
+						bind:value={addQuantityValue}
+						class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+					/>
+				</div>
+
+				<!-- Expiration date (optional) -->
+				<div class="flex flex-col gap-1.5">
+					<label for="sheet-expirationDate" class="text-sm font-medium text-[#3a3632]">
+						Expiration date <span class="font-normal text-[#8a8279]">(optional)</span>
+					</label>
+					<input
+						id="sheet-expirationDate"
+						type="date"
+						name="expirationDate"
+						bind:value={addExpirationDate}
+						class="rounded-lg border border-[#ddd6cc] bg-white px-3.5 py-2.5 text-sm text-[#1a1714] shadow-sm transition-all duration-200 outline-none focus:border-[#c4a46a] focus:ring-2 focus:ring-[#c4a46a33]"
+					/>
+				</div>
+
+				<div class="flex items-center gap-4 pb-2">
+					<button
+						type="submit"
+						class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0"
+					>
+						Add Item
+					</button>
+					{#if form?.message}
+						<p class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
+							{form.message}
+						</p>
+					{/if}
+				</div>
+			</form>
+		</div>
+	{/if}
+</BottomSheet>
 
 <!-- Delete All confirmation dialog -->
 {#if showDeleteAllDialog}
