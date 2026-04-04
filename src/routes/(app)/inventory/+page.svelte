@@ -180,7 +180,7 @@
 	}
 
 	$effect(() => {
-		if (page.url.searchParams.get('scan') === 'true' && fileInput) {
+		if (page.url.searchParams.get('scan') === 'receipt' && fileInput) {
 			triggerScan();
 		}
 	});
@@ -529,7 +529,7 @@
 			</section>
 		{/if}
 	{:else}
-		<!-- Hidden file input for camera/photo library (kept for ?scan=true deep-link compat) -->
+		<!-- Hidden file input for receipt scan (?scan=receipt deep-link and bottom sheet) -->
 		<input
 			bind:this={fileInput}
 			type="file"
@@ -988,13 +988,13 @@
 					</button>
 				</li>
 
-				<!-- Scan Receipt (placeholder) -->
+				<!-- Scan Receipt -->
 				<li>
 					<button
 						type="button"
-						disabled
-						class="flex w-full items-center gap-4 rounded-xl border border-[#e8e2d9] bg-white px-5 py-4 text-left opacity-50 cursor-not-allowed"
-						aria-label="Scan Receipt (coming soon)"
+						onclick={() => { closeSheet(); triggerScan(); }}
+						class="flex w-full items-center gap-4 rounded-xl border border-[#e8e2d9] bg-white px-5 py-4 text-left transition-all duration-150 hover:border-[#c4a46a66] hover:bg-[#faf8f5] hover:shadow-sm"
+						aria-label="Scan Receipt"
 					>
 						<span
 							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f0ebe4]"
@@ -1016,8 +1016,22 @@
 						</span>
 						<span>
 							<span class="block text-sm font-semibold text-[#1a1714]">Scan Receipt</span>
-							<span class="block text-xs text-[#8a8279]">Coming soon</span>
+							<span class="block text-xs text-[#8a8279]">Upload or photograph a receipt</span>
 						</span>
+						<svg
+							class="ml-auto text-[#b5aea4]"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="9 18 15 12 9 6" />
+						</svg>
 					</button>
 				</li>
 

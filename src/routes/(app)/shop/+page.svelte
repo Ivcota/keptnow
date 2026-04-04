@@ -184,7 +184,7 @@
 			</p>
 			<div class="flex flex-col gap-3">
 				<a
-					href="/inventory?scan=true"
+					href="/inventory?scan=receipt"
 					class="block w-full rounded-2xl bg-[#2c2416] px-6 py-4 text-center text-base font-semibold text-white shadow-md active:bg-[#3d3420]"
 				>
 					Scan Receipt
