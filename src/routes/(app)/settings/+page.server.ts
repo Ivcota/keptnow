@@ -20,32 +20,28 @@ import {
 } from '$lib/domain/household/errors.js';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
+	// Await household (gates the section), stream members list
 	let household = null;
-	let members: { id: string; name: string; role: 'owner' | 'member' }[] = [];
-
 	if (locals.householdId) {
-		const [hh, mems] = await Promise.all([
-			appRuntime
-				.runPromise(
-					Effect.gen(function* () {
-						const repo = yield* HouseholdRepository;
-						return yield* repo.findByUserId(locals.user!.id);
-					})
-				)
-				.catch(() => null),
-			appRuntime
-				.runPromise(Effect.either(getMembers(locals.householdId)))
-				.then((r) => (r._tag === 'Right' ? r.right : []))
-				.catch(() => [])
-		]);
-		household = hh;
-		members = mems;
+		household = await appRuntime
+			.runPromise(
+				Effect.gen(function* () {
+					const repo = yield* HouseholdRepository;
+					return yield* repo.findByUserId(locals.user!.id);
+				})
+			)
+			.catch(() => null);
 	}
 
 	return {
 		user: locals.user!,
 		household,
-		members,
+		members: locals.householdId
+			? appRuntime
+					.runPromise(Effect.either(getMembers(locals.householdId)))
+					.then((r) => (r._tag === 'Right' ? r.right : []))
+					.catch(() => [] as { id: string; name: string; role: 'owner' | 'member' }[])
+			: Promise.resolve([] as { id: string; name: string; role: 'owner' | 'member' }[]),
 		inviteGenerated: url.searchParams.get('inviteGenerated') ?? null
 	};
 };

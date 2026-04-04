@@ -31,23 +31,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user.id;
 	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
-	const [items, trashedItems] = await Promise.all([
-		appRuntime.runPromise(
-			withRequestLogging(findAllFoodItems(householdId, userId), { ...ctx, useCase: 'findAllFoodItems' }).pipe(
-				Effect.orDie
-			)
-		),
-		appRuntime.runPromise(
+
+	// Await critical data for initial render; stream the rest
+	const items = await appRuntime.runPromise(
+		withRequestLogging(findAllFoodItems(householdId, userId), { ...ctx, useCase: 'findAllFoodItems' }).pipe(
+			Effect.orDie
+		)
+	);
+
+	return {
+		items,
+		trashedItems: appRuntime.runPromise(
 			withRequestLogging(findTrashedFoodItems(householdId, userId), {
 				...ctx,
 				useCase: 'findTrashedFoodItems'
 			}).pipe(Effect.orDie)
+		),
+		restockItems: Effect.runPromise(
+			getRestockItems(items, DEFAULT_EXPIRATION_CONFIG).pipe(Effect.orDie)
 		)
-	]);
-	const restockItems = await Effect.runPromise(
-		getRestockItems(items, DEFAULT_EXPIRATION_CONFIG).pipe(Effect.orDie)
-	);
-	return { items, trashedItems, restockItems };
+	};
 };
 
 function parseItemFields(

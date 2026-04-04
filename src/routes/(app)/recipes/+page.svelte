@@ -710,13 +710,16 @@
 			{/if}
 		{:else}
 			<!-- Trash tab -->
-			{#if data.trashedRecipes.length === 0}
+			{#await data.trashedRecipes}
+				<p class="text-sm text-[#8a7a6a]">Loading trashed recipes...</p>
+			{:then trashedRecipes}
+			{#if trashedRecipes.length === 0}
 				<div class="rounded-2xl border border-dashed border-[#d8cfc4] bg-white p-10 text-center">
 					<p class="text-[#8a7a6a]">Trash is empty.</p>
 				</div>
 			{:else}
 				<div class="flex flex-col gap-3">
-					{#each data.trashedRecipes as recipe (recipe.id)}
+					{#each trashedRecipes as recipe (recipe.id)}
 						<div
 							class="rounded-2xl border border-[#e8e2d9] bg-white px-5 py-4 opacity-60 shadow-sm"
 						>
@@ -746,6 +749,7 @@
 					{/each}
 				</div>
 			{/if}
+			{/await}
 		{/if}
 	{/if}
 </main>

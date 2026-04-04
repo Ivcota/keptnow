@@ -53,8 +53,17 @@
 		setTimeout(() => (copied = false), 2000);
 	}
 
+	// Resolve streamed members into reactive state
+	type Member = { id: string; name: string; role: 'owner' | 'member' };
+	let resolvedMembers = $state<Member[]>([]);
+
+	$effect(() => {
+		const promise = data.members;
+		promise.then((m) => { resolvedMembers = m; });
+	});
+
 	const isOwner = $derived(
-		data.members.find((m) => m.id === data.user.id)?.role === 'owner'
+		resolvedMembers.find((m) => m.id === data.user.id)?.role === 'owner'
 	);
 
 	let householdName = $state(data.household?.name ?? '');
@@ -283,7 +292,7 @@
 					<p class="mb-2 text-sm text-red-600">{transferError}</p>
 				{/if}
 				<ul class="divide-y divide-[#f0ebe4]">
-					{#each data.members as member}
+					{#each resolvedMembers as member}
 						<li class="flex items-center justify-between py-2.5">
 							<div>
 								<span class="text-sm font-medium text-[#1a1714]">{member.name}</span>
@@ -426,7 +435,7 @@
 						{leaveSubmitting ? 'Leaving…' : 'Leave household'}
 					</button>
 				</form>
-				{#if isOwner && data.members.length > 1}
+				{#if isOwner && resolvedMembers.length > 1}
 					<p class="mt-1.5 text-xs text-[#8a8279]">
 						Transfer ownership before leaving.
 					</p>

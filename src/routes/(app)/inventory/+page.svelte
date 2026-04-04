@@ -411,20 +411,28 @@
 						: 'text-[#8a8279] hover:bg-[#f0ebe4] hover:text-[#3a3632]'}"
 				>
 					{tab.label}
-					{#if tab.id === 'trash' && data.trashedItems.length > 0}
-						<span
-							class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
-						>
-							{data.trashedItems.length}
-						</span>
+					{#if tab.id === 'trash'}
+						{#await data.trashedItems then trashedItems}
+							{#if trashedItems.length > 0}
+								<span
+									class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+								>
+									{trashedItems.length}
+								</span>
+							{/if}
+						{/await}
 					{/if}
-					{#if tab.id === 'restock' && data.restockItems.length > 0}
-						<span
-							class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-[#1a1714]"
-							style="background-color: #c4a46a;"
-						>
-							{data.restockItems.length}
-						</span>
+					{#if tab.id === 'restock'}
+						{#await data.restockItems then restockItems}
+							{#if restockItems.length > 0}
+								<span
+									class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-[#1a1714]"
+									style="background-color: #c4a46a;"
+								>
+									{restockItems.length}
+								</span>
+							{/if}
+						{/await}
 					{/if}
 				</button>
 			{/each}
@@ -438,12 +446,15 @@
 
 	<!-- Restock tab content -->
 	{#if activeTab === 'restock'}
-		{#if data.restockItems.length === 0}
+		{#await data.restockItems}
+			<p class="mb-10 text-sm text-[#8a8279]">Loading restock items...</p>
+		{:then restockItems}
+		{#if restockItems.length === 0}
 			<p class="mb-10 text-sm text-[#8a8279]">Nothing needs restocking right now.</p>
 		{:else}
 			<section class="mb-10">
 				<ul class="divide-y divide-[#e8e2d9] rounded-xl border border-[#e8e2d9] bg-white">
-					{#each data.restockItems as restockItem (restockItem.foodItem.id)}
+					{#each restockItems as restockItem (restockItem.foodItem.id)}
 						{@const statusColors = {
 							expired: 'bg-red-100 text-red-700 border-red-200',
 							'expiring-soon': 'bg-yellow-100 text-yellow-700 border-yellow-200'
@@ -528,15 +539,19 @@
 				</ul>
 			</section>
 		{/if}
+		{/await}
 
 		<!-- Trash tab content -->
 	{:else if activeTab === 'trash'}
-		{#if data.trashedItems.length === 0}
+		{#await data.trashedItems}
+			<p class="mb-10 text-sm text-[#8a8279]">Loading trashed items...</p>
+		{:then trashedItems}
+		{#if trashedItems.length === 0}
 			<p class="mb-10 text-sm text-[#8a8279]">No recently trashed items.</p>
 		{:else}
 			<section class="mb-10">
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{#each data.trashedItems as item (item.id)}
+					{#each trashedItems as item (item.id)}
 						<article
 							class="rounded-xl border border-[#e8e2d9] bg-white p-6 opacity-70 transition-all duration-200"
 						>
@@ -576,6 +591,7 @@
 				</div>
 			</section>
 		{/if}
+		{/await}
 	{:else}
 		<!-- Hidden file input for receipt scan (?scan=receipt deep-link and bottom sheet) -->
 		<input

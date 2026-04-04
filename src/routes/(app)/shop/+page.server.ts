@@ -13,13 +13,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/shop' };
-	const items = await appRuntime.runPromise(
-		withRequestLogging(generateShoppingList(householdId, userId), {
-			...ctx,
-			useCase: 'generateShoppingList'
-		}).pipe(Effect.orDie)
-	);
-	return { items };
+	// Stream the expensive shopping list generation so the page shell renders immediately
+	return {
+		items: appRuntime.runPromise(
+			withRequestLogging(generateShoppingList(householdId, userId), {
+				...ctx,
+				useCase: 'generateShoppingList'
+			}).pipe(Effect.orDie)
+		)
+	};
 };
 
 export const actions: Actions = {

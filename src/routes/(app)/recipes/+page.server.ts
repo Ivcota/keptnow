@@ -21,17 +21,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
-	const [recipes, trashedRecipes, foodItems] = await Promise.all([
+	// Await critical data for initial render; stream trash tab data
+	const [recipes, foodItems] = await Promise.all([
 		appRuntime.runPromise(
 			withRequestLogging(findAllRecipes(householdId, userId), { ...ctx, useCase: 'findAllRecipes' }).pipe(
 				Effect.orDie
 			)
-		),
-		appRuntime.runPromise(
-			withRequestLogging(findTrashedRecipes(householdId, userId), {
-				...ctx,
-				useCase: 'findTrashedRecipes'
-			}).pipe(Effect.orDie)
 		),
 		appRuntime.runPromise(
 			withRequestLogging(findAllFoodItems(householdId, userId), {
@@ -40,7 +35,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 			}).pipe(Effect.orDie)
 		)
 	]);
-	return { recipes, trashedRecipes, foodItems };
+
+	return {
+		recipes,
+		foodItems,
+		trashedRecipes: appRuntime.runPromise(
+			withRequestLogging(findTrashedRecipes(householdId, userId), {
+				...ctx,
+				useCase: 'findTrashedRecipes'
+			}).pipe(Effect.orDie)
+		)
+	};
 };
 
 function parseIngredients(formData: FormData): CreateIngredientInput[] | null {

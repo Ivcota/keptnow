@@ -21,12 +21,25 @@
 		goto('/shop', { replaceState: true });
 	}
 
+	// Resolve streamed items into reactive state
+	type ShoppingItem = Awaited<typeof data.items>[number];
+	let resolvedItems = $state<ShoppingItem[]>([]);
+	let itemsLoaded = $state(false);
+
+	$effect(() => {
+		const promise = data.items;
+		promise.then((items) => {
+			resolvedItems = items;
+			itemsLoaded = true;
+		});
+	});
+
 	// Optimistic overrides: id → intended checked state, set immediately on click
 	const optimisticOverrides = $state(new Map<number, boolean>());
 
 	// When server data refreshes, clear overrides whose state the server has caught up with
 	$effect(() => {
-		const items = data.items;
+		const items = resolvedItems;
 		untrack(() => {
 			for (const [id, optimistic] of optimisticOverrides) {
 				const serverItem = items.find((i) => i.id === id);
@@ -39,17 +52,17 @@
 
 	function isChecked(id: number): boolean {
 		if (optimisticOverrides.has(id)) return optimisticOverrides.get(id)!;
-		return data.items.find((i) => i.id === id)?.checked ?? false;
+		return resolvedItems.find((i) => i.id === id)?.checked ?? false;
 	}
 
 	function handleToggle(id: number, nextChecked: boolean) {
 		optimisticOverrides.set(id, nextChecked);
 	}
 
-	const uncheckedItems = $derived(data.items.filter((i) => !isChecked(i.id)));
-	const checkedItems = $derived(data.items.filter((i) => isChecked(i.id)));
+	const uncheckedItems = $derived(resolvedItems.filter((i) => !isChecked(i.id)));
+	const checkedItems = $derived(resolvedItems.filter((i) => isChecked(i.id)));
 
-	const hasCheckedItems = $derived(data.items.some((i) => isChecked(i.id)));
+	const hasCheckedItems = $derived(resolvedItems.some((i) => isChecked(i.id)));
 </script>
 
 <svelte:head>
@@ -68,7 +81,11 @@
 		</h1>
 	</div>
 
-	{#if data.items.length === 0}
+	{#if !itemsLoaded}
+		<div class="rounded-2xl border border-dashed border-[#d8cfc4] bg-white p-10 text-center">
+			<p class="text-[#8a7a6a]">Loading shopping list...</p>
+		</div>
+	{:else if resolvedItems.length === 0}
 		<div class="rounded-2xl border border-dashed border-[#d8cfc4] bg-white p-10 text-center">
 			<p class="mb-1 text-[#8a7a6a]">Nothing to shop for.</p>
 			<p class="text-sm text-[#b0a090]">Items will appear here when food is expiring or pinned recipes have missing ingredients.</p>

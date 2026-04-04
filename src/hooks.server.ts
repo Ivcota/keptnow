@@ -3,9 +3,6 @@ import { building } from '$app/environment';
 import { sequence } from '@sveltejs/kit/hooks';
 import { auth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 
 const handleRequestId: Handle = async ({ event, resolve }) => {
 	event.locals.requestId = crypto.randomUUID();
@@ -19,13 +16,11 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
 
-		const rows = await db
-			.select({ householdId: user.householdId })
-			.from(user)
-			.where(eq(user.id, session.user.id));
-
-		if (rows.length > 0 && rows[0].householdId) {
-			event.locals.householdId = rows[0].householdId;
+		// better-auth already fetches the full user row; grab householdId
+		// from it instead of issuing a second DB query on every request.
+		const householdId = (session.user as Record<string, unknown>).householdId;
+		if (typeof householdId === 'string' && householdId) {
+			event.locals.householdId = householdId;
 		}
 	}
 
