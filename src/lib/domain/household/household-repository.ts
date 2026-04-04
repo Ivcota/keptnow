@@ -1,5 +1,5 @@
 import { Context, Effect } from 'effect';
-import type { Household } from './household.js';
+import type { Household, HouseholdMember } from './household.js';
 import type { HouseholdRepositoryError } from './errors.js';
 
 export class HouseholdRepository extends Context.Tag('HouseholdRepository')<
@@ -29,5 +29,25 @@ export class HouseholdRepository extends Context.Tag('HouseholdRepository')<
 		readonly getUserRole: (
 			userId: string
 		) => Effect.Effect<'owner' | 'member' | null, HouseholdRepositoryError>;
+		readonly getMembers: (
+			householdId: string
+		) => Effect.Effect<HouseholdMember[], HouseholdRepositoryError>;
+		readonly removeMember: (
+			memberUserId: string,
+			householdId: string
+		) => Effect.Effect<void, HouseholdRepositoryError>;
+		readonly transferOwnership: (
+			householdId: string,
+			fromUserId: string,
+			toUserId: string
+		) => Effect.Effect<void, HouseholdRepositoryError>;
+		readonly renameHousehold: (
+			householdId: string,
+			name: string
+		) => Effect.Effect<Household, HouseholdRepositoryError>;
+		readonly leaveHousehold: (
+			userId: string,
+			householdId: string
+		) => Effect.Effect<void, HouseholdRepositoryError>;
 	}
 >() {}

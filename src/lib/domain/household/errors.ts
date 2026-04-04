@@ -21,3 +21,17 @@ export class NotHouseholdOwnerError extends Data.TaggedError('NotHouseholdOwnerE
 	userId: string;
 	householdId: string;
 }> {}
+
+export class OwnerCannotLeaveError extends Data.TaggedError('OwnerCannotLeaveError')<{
+	userId: string;
+	householdId: string;
+}> {}
+
+export class CannotRemoveSelfError extends Data.TaggedError('CannotRemoveSelfError')<{
+	userId: string;
+}> {}
+
+export class MemberNotFoundError extends Data.TaggedError('MemberNotFoundError')<{
+	userId: string;
+	householdId: string;
+}> {}

@@ -8,3 +8,9 @@ export interface Household {
 	createdAt: Date;
 	updatedAt: Date;
 }
+
+export interface HouseholdMember {
+	id: string;
+	name: string;
+	role: HouseholdRole;
+}
