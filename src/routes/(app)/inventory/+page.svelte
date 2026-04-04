@@ -5,8 +5,11 @@
 	import { getExpirationStatus } from '$lib/domain/inventory/expiration.js';
 	import { compressImage } from '$lib/compress-image.js';
 	import type { StorageLocation, FoodItem } from '$lib/domain/inventory/food-item.js';
+	import type { QuantityUnit } from '$lib/domain/shared/quantity.js';
 	import { formatQuantity } from '$lib/format-quantity.js';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
+	import ScanReviewModal, { type SelectedItem } from '$lib/components/ScanReviewModal.svelte';
+	import type { ExtractedFoodItem } from '$lib/domain/receipt/types.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -141,38 +144,15 @@
 	}
 
 	// Receipt scanning state
-	interface ReviewItem {
-		localId: number;
-		checked: boolean;
-		name: string;
-		canonicalName: string | null;
-		storageLocation: StorageLocation;
-		quantityValue: number;
-		quantityUnit: string;
-		expirationDate: string;
-	}
-
 	let scanning = $state(false);
 	let scanError = $state<string | null>(null);
-	let reviewItems = $state<ReviewItem[]>([]);
+	let scannedItems = $state<ExtractedFoodItem[]>([]);
 	let fileInput = $state<HTMLInputElement | undefined>();
-	let nextReviewId = 0;
 
-	const checkedCount = $derived(reviewItems.filter((i) => i.checked).length);
-	const selectedItemsJson = $derived(
-		JSON.stringify(
-			reviewItems
-				.filter((i) => i.checked)
-				.map((i) => ({
-					name: i.name,
-					canonicalName: i.canonicalName,
-					storageLocation: i.storageLocation,
-					quantityValue: i.quantityValue,
-					quantityUnit: i.quantityUnit,
-					expirationDate: i.expirationDate || null
-				}))
-		)
-	);
+	// Bulk submission state (populated by ScanReviewModal onsubmit)
+	let pendingBulkItems = $state<SelectedItem[]>([]);
+	let bulkFormEl = $state<HTMLFormElement | undefined>();
+	const pendingBulkJson = $derived(JSON.stringify(pendingBulkItems));
 
 	function triggerScan() {
 		scanError = null;
@@ -216,7 +196,7 @@
 				return;
 			}
 
-			const items = (await res.json()) as Array<{
+			const rawItems = (await res.json()) as Array<{
 				name: string;
 				canonicalName: string | null;
 				storageLocation: StorageLocation;
@@ -224,22 +204,17 @@
 				expirationDate: string | null;
 			}>;
 
-			if (items.length === 0) {
+			if (rawItems.length === 0) {
 				scanError = "Couldn't extract any items from this image. Try a clearer photo.";
 				return;
 			}
 
-			reviewItems = items.map((item) => ({
-				localId: nextReviewId++,
-				checked: true,
+			scannedItems = rawItems.map((item) => ({
 				name: item.name,
 				canonicalName: item.canonicalName,
 				storageLocation: item.storageLocation,
-				quantityValue: item.quantity.value,
-				quantityUnit: item.quantity.unit,
-				expirationDate: item.expirationDate
-					? new Date(item.expirationDate).toISOString().split('T')[0]
-					: ''
+				quantity: { value: item.quantity.value, unit: item.quantity.unit as QuantityUnit },
+				expirationDate: item.expirationDate ? new Date(item.expirationDate) : null
 			}));
 		} catch {
 			scanError = 'Something went wrong. Try again in a moment.';
@@ -247,6 +222,18 @@
 			scanning = false;
 			if (fileInput) fileInput.value = '';
 		}
+	}
+
+	async function handleScanReviewSubmit(items: SelectedItem[]) {
+		pendingBulkItems = items;
+		// Allow Svelte to bind the form element before submitting
+		await Promise.resolve();
+		bulkFormEl?.requestSubmit();
+	}
+
+	function handleScanReviewCancel() {
+		scannedItems = [];
+		scanError = null;
 	}
 </script>
 
@@ -540,134 +527,42 @@
 		/>
 
 		<!-- Receipt Review -->
-		{#if reviewItems.length > 0}
-			<section class="mb-10 rounded-xl border border-[#e8e2d9] bg-white">
-				<div class="p-6 sm:p-8">
-					<div class="mb-4 flex items-center justify-between">
-						<h3 class="font-[Cormorant_Garamond,serif] text-lg font-bold text-[#1a1714]">
-							Review Scanned Items
-						</h3>
-						<button
-							type="button"
-							onclick={() => {
-								reviewItems = [];
-								scanError = null;
-							}}
-							class="text-sm text-[#8a8279] hover:text-[#3a3632]"
-						>
-							Cancel
-						</button>
-					</div>
-
-					<ul class="mb-4 flex flex-col gap-2">
-						{#each reviewItems as item (item.localId)}
-							<li class="flex flex-wrap items-center gap-2 rounded-lg border border-[#e8e2d9] p-3">
-								<input
-									type="checkbox"
-									bind:checked={item.checked}
-									class="h-4 w-4 shrink-0 cursor-pointer accent-[#c4a46a]"
-									aria-label="Include {item.name}"
-								/>
-								<input
-									type="text"
-									bind:value={item.name}
-									class="min-w-24 flex-1 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a] focus:ring-1 focus:ring-[#c4a46a33]"
-									aria-label="Name"
-								/>
-								<select
-									bind:value={item.storageLocation}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Storage location"
-								>
-									<option value="pantry">Pantry</option>
-									<option value="fridge">Fridge</option>
-									<option value="freezer">Freezer</option>
-								</select>
-								<input
-									type="number"
-									bind:value={item.quantityValue}
-									min="0.01"
-									step="any"
-									placeholder="qty"
-									class="w-16 rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Quantity"
-								/>
-								<select
-									bind:value={item.quantityUnit}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Unit"
-								>
-									<optgroup label="Count">
-										<option value="count">count</option>
-										<option value="each">each</option>
-										<option value="dozen">dozen</option>
-									</optgroup>
-									<optgroup label="Volume">
-										<option value="tsp">tsp</option>
-										<option value="tbsp">tbsp</option>
-										<option value="fl oz">fl oz</option>
-										<option value="cup">cup</option>
-										<option value="pt">pint</option>
-										<option value="qt">quart</option>
-										<option value="gal">gallon</option>
-										<option value="ml">ml</option>
-										<option value="l">liter</option>
-									</optgroup>
-									<optgroup label="Weight">
-										<option value="oz">oz</option>
-										<option value="lb">lb</option>
-										<option value="g">g</option>
-										<option value="kg">kg</option>
-									</optgroup>
-								</select>
-								<input
-									type="date"
-									bind:value={item.expirationDate}
-									class="rounded border border-[#ddd6cc] bg-white px-2 py-1 text-sm text-[#1a1714] outline-none focus:border-[#c4a46a]"
-									aria-label="Expiration date"
-								/>
-							</li>
-						{/each}
-					</ul>
-
-					<form
-						method="post"
-						action="?/bulkCreate"
-						use:enhance={() => {
-							return ({ result, update }) => {
-								if (result.type !== 'failure') {
-									const count =
-										result.type === 'success' && result.data
-											? (result.data as { count: number }).count
-											: 0;
-									showBulkAddToast(count);
-									reviewItems = [];
-								}
-								update();
-							};
-						}}
-					>
-						<input type="hidden" name="items" value={selectedItemsJson} />
-						<div class="flex items-center gap-4">
-							<button
-								type="submit"
-								disabled={checkedCount === 0}
-								class="rounded-lg bg-[#c4a46a] px-5 py-2.5 text-sm font-semibold tracking-wide text-[#1a1714] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d4b87a] hover:shadow-md active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-							>
-								Add {checkedCount} Item{checkedCount === 1 ? '' : 's'}
-							</button>
-							{#if form?.message}
-								<p
-									class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600"
-								>
-									{form.message}
-								</p>
-							{/if}
-						</div>
-					</form>
-				</div>
-			</section>
+		{#if scannedItems.length > 0}
+			<ScanReviewModal
+				items={scannedItems}
+				onsubmit={handleScanReviewSubmit}
+				oncancel={handleScanReviewCancel}
+			/>
+			{#if form?.message}
+				<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600">
+					{form.message}
+				</p>
+			{/if}
 		{/if}
+
+		<!-- Hidden bulk create form (submitted programmatically by handleScanReviewSubmit) -->
+		<form
+			method="post"
+			action="?/bulkCreate"
+			bind:this={bulkFormEl}
+			class="hidden"
+			use:enhance={() => {
+				return ({ result, update }) => {
+					if (result.type !== 'failure') {
+						const count =
+							result.type === 'success' && result.data
+								? (result.data as { count: number }).count
+								: 0;
+						showBulkAddToast(count);
+						scannedItems = [];
+						pendingBulkItems = [];
+					}
+					update();
+				};
+			}}
+		>
+			<input type="hidden" name="items" value={pendingBulkJson} />
+		</form>
 
 		<!-- Active items list -->
 		{#if filteredItems.length > 0}
@@ -919,7 +814,7 @@
 </main>
 
 <!-- FAB: Add Items (only shown on inventory tabs, not trash/restock) -->
-{#if activeTab !== 'trash' && activeTab !== 'restock' && reviewItems.length === 0}
+{#if activeTab !== 'trash' && activeTab !== 'restock' && scannedItems.length === 0}
 	<button
 		type="button"
 		onclick={() => openSheet()}
