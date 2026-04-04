@@ -4,7 +4,8 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
-import { household } from '$lib/server/db/schema';
+import { household, user as userTable } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { sendPasswordResetEmail } from '$lib/server/email';
 
 export const auth = betterAuth({
@@ -20,7 +21,7 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				before: async (newUser) => {
+				after: async (newUser) => {
 					const householdId = crypto.randomUUID();
 					const now = new Date();
 					await db.insert(household).values({
@@ -29,13 +30,10 @@ export const auth = betterAuth({
 						createdAt: now,
 						updatedAt: now
 					});
-					return {
-						data: {
-							...newUser,
-							householdId,
-							householdRole: 'owner' as const
-						}
-					};
+					await db
+						.update(userTable)
+						.set({ householdId, householdRole: 'owner' })
+						.where(eq(userTable.id, newUser.id));
 				}
 			}
 		}
