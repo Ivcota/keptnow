@@ -26,18 +26,23 @@ function rowToFoodItem(row: typeof foodItem.$inferSelect): FoodItem {
 	};
 }
 
+function scopeCondition(householdId: string | null, userId: string) {
+	return householdId ? eq(foodItem.householdId, householdId) : eq(foodItem.userId, userId);
+}
+
 export const DrizzleFoodItemRepository = Layer.effect(
 	FoodItemRepository,
 	Effect.gen(function* () {
 		const db = yield* Database;
 		return {
-			create: (userId, input) =>
+			create: (householdId, userId, input) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.insert(foodItem)
 							.values({
 								userId,
+								householdId,
 								name: input.name,
 								canonicalName: input.canonicalName ?? null,
 								storageLocation: input.storageLocation,
@@ -50,7 +55,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 					catch: (e) =>
 						new FoodItemRepositoryError({ message: 'Failed to create food item', cause: e })
 				}),
-			bulkCreate: (userId, items) =>
+			bulkCreate: (householdId, userId, items) =>
 				Effect.tryPromise({
 					try: () =>
 						db.transaction((tx) =>
@@ -59,6 +64,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 								.values(
 									items.map((item) => ({
 										userId,
+										householdId,
 										name: item.name,
 										canonicalName: item.canonicalName ?? null,
 										storageLocation: item.storageLocation,
@@ -73,18 +79,18 @@ export const DrizzleFoodItemRepository = Layer.effect(
 					catch: (e) =>
 						new FoodItemRepositoryError({ message: 'Failed to bulk create food items', cause: e })
 				}),
-			findAll: (userId) =>
+			findAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.select()
 							.from(foodItem)
-							.where(and(eq(foodItem.userId, userId), isNull(foodItem.trashedAt)))
+							.where(and(scopeCondition(householdId, userId), isNull(foodItem.trashedAt)))
 							.then((rows) => rows.map(rowToFoodItem)),
 					catch: (e) =>
 						new FoodItemRepositoryError({ message: 'Failed to fetch food items', cause: e })
 				}),
-			update: (userId, input) =>
+			update: (householdId, userId, input) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -94,7 +100,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 								.where(
 									and(
 										eq(foodItem.id, input.id),
-										eq(foodItem.userId, userId),
+										scopeCondition(householdId, userId),
 										isNull(foodItem.trashedAt)
 									)
 								),
@@ -119,14 +125,14 @@ export const DrizzleFoodItemRepository = Layer.effect(
 									expirationDate: input.expirationDate,
 									updatedAt: new Date()
 								})
-								.where(and(eq(foodItem.id, input.id), eq(foodItem.userId, userId)))
+								.where(and(eq(foodItem.id, input.id), scopeCondition(householdId, userId)))
 								.returning()
 								.then((rows) => rowToFoodItem(rows[0])),
 						catch: (e) =>
 							new FoodItemRepositoryError({ message: 'Failed to update food item', cause: e })
 					});
 				}),
-			trash: (userId, id) =>
+			trash: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -134,7 +140,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 								.select()
 								.from(foodItem)
 								.where(
-									and(eq(foodItem.id, id), eq(foodItem.userId, userId), isNull(foodItem.trashedAt))
+									and(eq(foodItem.id, id), scopeCondition(householdId, userId), isNull(foodItem.trashedAt))
 								),
 						catch: (e) =>
 							new FoodItemRepositoryError({ message: 'Failed to find food item', cause: e })
@@ -149,12 +155,12 @@ export const DrizzleFoodItemRepository = Layer.effect(
 							db
 								.update(foodItem)
 								.set({ trashedAt: new Date(), updatedAt: new Date() })
-								.where(and(eq(foodItem.id, id), eq(foodItem.userId, userId))),
+								.where(and(eq(foodItem.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new FoodItemRepositoryError({ message: 'Failed to trash food item', cause: e })
 					});
 				}),
-			restore: (userId, id) =>
+			restore: (householdId, userId, id) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -164,7 +170,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 								.where(
 									and(
 										eq(foodItem.id, id),
-										eq(foodItem.userId, userId),
+										scopeCondition(householdId, userId),
 										isNotNull(foodItem.trashedAt)
 									)
 								),
@@ -181,12 +187,12 @@ export const DrizzleFoodItemRepository = Layer.effect(
 							db
 								.update(foodItem)
 								.set({ trashedAt: null, updatedAt: new Date() })
-								.where(and(eq(foodItem.id, id), eq(foodItem.userId, userId))),
+								.where(and(eq(foodItem.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new FoodItemRepositoryError({ message: 'Failed to restore food item', cause: e })
 					});
 				}),
-			findTrashed: (userId) =>
+			findTrashed: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () => {
 						const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -195,7 +201,7 @@ export const DrizzleFoodItemRepository = Layer.effect(
 							.from(foodItem)
 							.where(
 								and(
-									eq(foodItem.userId, userId),
+									scopeCondition(householdId, userId),
 									isNotNull(foodItem.trashedAt),
 									gte(foodItem.trashedAt, windowStart)
 								)
@@ -205,13 +211,13 @@ export const DrizzleFoodItemRepository = Layer.effect(
 					catch: (e) =>
 						new FoodItemRepositoryError({ message: 'Failed to fetch trashed food items', cause: e })
 				}),
-			patchCanonicalName: (userId, id, canonicalName) =>
+			patchCanonicalName: (householdId, userId, id, canonicalName) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.update(foodItem)
 							.set({ canonicalName, updatedAt: new Date() })
-							.where(and(eq(foodItem.id, id), eq(foodItem.userId, userId)))
+							.where(and(eq(foodItem.id, id), scopeCondition(householdId, userId)))
 							.then(() => undefined as void),
 					catch: (e) =>
 						new FoodItemRepositoryError({
@@ -219,13 +225,13 @@ export const DrizzleFoodItemRepository = Layer.effect(
 							cause: e
 						})
 				}),
-			trashAll: (userId) =>
+			trashAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.update(foodItem)
 							.set({ trashedAt: new Date(), updatedAt: new Date() })
-							.where(and(eq(foodItem.userId, userId), isNull(foodItem.trashedAt)))
+							.where(and(scopeCondition(householdId, userId), isNull(foodItem.trashedAt)))
 							.then(() => undefined as void),
 					catch: (e) =>
 						new FoodItemRepositoryError({ message: 'Failed to trash all food items', cause: e })

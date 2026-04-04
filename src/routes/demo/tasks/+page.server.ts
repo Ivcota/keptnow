@@ -16,9 +16,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const userId = locals.user.id;
+	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/demo/tasks' };
 	const tasks = await appRuntime.runPromise(
-		withRequestLogging(findAllTasks(userId), { ...ctx, useCase: 'findAllTasks' }).pipe(
+		withRequestLogging(findAllTasks(householdId, userId), { ...ctx, useCase: 'findAllTasks' }).pipe(
 			Effect.orDie
 		)
 	);
@@ -30,6 +31,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/demo/tasks' };
 		const formData = await request.formData();
 		const title = formData.get('title')?.toString() ?? '';
@@ -37,7 +39,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(createTask(userId, { title, priority }), {
+				withRequestLogging(createTask(householdId, userId, { title, priority }), {
 					...ctx,
 					useCase: 'createTask'
 				}),
@@ -58,6 +60,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/demo/tasks' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -66,7 +69,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(toggleTaskCompletion(userId, { id }), {
+				withRequestLogging(toggleTaskCompletion(householdId, userId, { id }), {
 					...ctx,
 					useCase: 'toggleTaskCompletion'
 				}),
@@ -87,6 +90,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/demo/tasks' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -95,7 +99,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(removeTask(userId, { id }), { ...ctx, useCase: 'removeTask' }),
+				withRequestLogging(removeTask(householdId, userId, { id }), { ...ctx, useCase: 'removeTask' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'TaskNotFoundError'

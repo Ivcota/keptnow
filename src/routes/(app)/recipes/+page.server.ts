@@ -19,21 +19,22 @@ import { normalizeUnit, UnknownUnitError } from '$lib/infrastructure/unit-normal
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
+	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 	const [recipes, trashedRecipes, foodItems] = await Promise.all([
 		appRuntime.runPromise(
-			withRequestLogging(findAllRecipes(userId), { ...ctx, useCase: 'findAllRecipes' }).pipe(
+			withRequestLogging(findAllRecipes(householdId, userId), { ...ctx, useCase: 'findAllRecipes' }).pipe(
 				Effect.orDie
 			)
 		),
 		appRuntime.runPromise(
-			withRequestLogging(findTrashedRecipes(userId), {
+			withRequestLogging(findTrashedRecipes(householdId, userId), {
 				...ctx,
 				useCase: 'findTrashedRecipes'
 			}).pipe(Effect.orDie)
 		),
 		appRuntime.runPromise(
-			withRequestLogging(findAllFoodItems(userId), {
+			withRequestLogging(findAllFoodItems(householdId, userId), {
 				...ctx,
 				useCase: 'findAllFoodItems'
 			}).pipe(Effect.orDie)
@@ -77,6 +78,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const name = formData.get('name')?.toString() ?? '';
@@ -88,7 +90,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(createRecipe(userId, { name, ingredients, notes }), {
+				withRequestLogging(createRecipe(householdId, userId, { name, ingredients, notes }), {
 					...ctx,
 					useCase: 'createRecipe'
 				}),
@@ -109,6 +111,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -124,7 +127,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(updateRecipe(userId, { id, name, ingredients, notes }), {
+				withRequestLogging(updateRecipe(householdId, userId, { id, name, ingredients, notes }), {
 					...ctx,
 					useCase: 'updateRecipe'
 				}),
@@ -154,6 +157,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -162,7 +166,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(trashRecipe(userId, id), { ...ctx, useCase: 'trashRecipe' }),
+				withRequestLogging(trashRecipe(householdId, userId, id), { ...ctx, useCase: 'trashRecipe' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'RecipeNotFoundError'
@@ -184,6 +188,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -192,7 +197,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(restoreRecipe(userId, id), { ...ctx, useCase: 'restoreRecipe' }),
+				withRequestLogging(restoreRecipe(householdId, userId, id), { ...ctx, useCase: 'restoreRecipe' }),
 				{
 					onFailure: (e) => {
 						if (e._tag === 'RecipeNotFoundError') {
@@ -223,6 +228,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -231,7 +237,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(pinRecipe(userId, id), { ...ctx, useCase: 'pinRecipe' }),
+				withRequestLogging(pinRecipe(householdId, userId, id), { ...ctx, useCase: 'pinRecipe' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'RecipeNotFoundError'
@@ -253,6 +259,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -261,7 +268,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(unpinRecipe(userId, id), { ...ctx, useCase: 'unpinRecipe' }),
+				withRequestLogging(unpinRecipe(householdId, userId, id), { ...ctx, useCase: 'unpinRecipe' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'RecipeNotFoundError'

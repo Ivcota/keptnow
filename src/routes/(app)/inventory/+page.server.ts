@@ -29,15 +29,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const userId = locals.user.id;
+	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 	const [items, trashedItems] = await Promise.all([
 		appRuntime.runPromise(
-			withRequestLogging(findAllFoodItems(userId), { ...ctx, useCase: 'findAllFoodItems' }).pipe(
+			withRequestLogging(findAllFoodItems(householdId, userId), { ...ctx, useCase: 'findAllFoodItems' }).pipe(
 				Effect.orDie
 			)
 		),
 		appRuntime.runPromise(
-			withRequestLogging(findTrashedFoodItems(userId), {
+			withRequestLogging(findTrashedFoodItems(householdId, userId), {
 				...ctx,
 				useCase: 'findTrashedFoodItems'
 			}).pipe(Effect.orDie)
@@ -94,6 +95,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 		const parsed = parseItemFields(await request.formData());
 		if (!parsed.ok) return fail(400, { message: parsed.message });
@@ -101,7 +103,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(createFoodItem(userId, fields), { ...ctx, useCase: 'createFoodItem' }),
+				withRequestLogging(createFoodItem(householdId, userId, fields), { ...ctx, useCase: 'createFoodItem' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'FoodItemValidationError'
@@ -117,7 +119,7 @@ export const actions: Actions = {
 		// Fire-and-forget: resolve canonical name in background
 		appRuntime
 			.runPromise(
-				resolveAndPatchCanonicalName(userId, outcome.item.id, outcome.item.name).pipe(
+				resolveAndPatchCanonicalName(householdId, userId, outcome.item.id, outcome.item.name).pipe(
 					Effect.catchAll(() => Effect.void)
 				)
 			)
@@ -128,6 +130,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -140,7 +143,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(updateFoodItem(userId, { id, ...fields }), {
+				withRequestLogging(updateFoodItem(householdId, userId, { id, ...fields }), {
 					...ctx,
 					useCase: 'updateFoodItem'
 				}),
@@ -170,6 +173,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -178,7 +182,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(trashFoodItem(userId, id), { ...ctx, useCase: 'trashFoodItem' }),
+				withRequestLogging(trashFoodItem(householdId, userId, id), { ...ctx, useCase: 'trashFoodItem' }),
 				{
 					onFailure: (e) =>
 						e._tag === 'FoodItemNotFoundError'
@@ -196,6 +200,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -208,7 +213,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(restoreFoodItem(userId, id, trashedAt), {
+				withRequestLogging(restoreFoodItem(householdId, userId, id, trashedAt), {
 					...ctx,
 					useCase: 'restoreFoodItem'
 				}),
@@ -242,11 +247,12 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(trashAllFoodItems(userId), { ...ctx, useCase: 'trashAllFoodItems' }),
+				withRequestLogging(trashAllFoodItems(householdId, userId), { ...ctx, useCase: 'trashAllFoodItems' }),
 				{
 					onFailure: () => ({ ok: false as const, status: 500 as const, message: 'Database error' }),
 					onSuccess: () => ({ ok: true as const })
@@ -261,6 +267,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 		const formData = await request.formData();
 		const itemsRaw = formData.get('items')?.toString() ?? '[]';
@@ -301,7 +308,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(createFoodItems(userId, items), {
+				withRequestLogging(createFoodItems(householdId, userId, items), {
 					...ctx,
 					useCase: 'createFoodItems'
 				}),

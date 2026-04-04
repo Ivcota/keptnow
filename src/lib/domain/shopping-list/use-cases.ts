@@ -16,6 +16,7 @@ import { matchIngredients } from '$lib/domain/recipe/ingredient-matching.js';
 import { subtract, sum, type Quantity } from '$lib/domain/shared/quantity.js';
 
 export const generateShoppingList = (
+	householdId: string | null,
 	userId: string,
 	now: Date = new Date()
 ): Effect.Effect<
@@ -29,7 +30,7 @@ export const generateShoppingList = (
 		const recipeRepo = yield* RecipeRepository;
 
 		// 1. Compute restock inputs from expiring food items
-		const foodItems = yield* foodItemRepo.findAll(userId);
+		const foodItems = yield* foodItemRepo.findAll(householdId, userId);
 		const restockItems = yield* getRestockItems(foodItems, DEFAULT_EXPIRATION_CONFIG, now).pipe(
 			Effect.orDie
 		);
@@ -42,7 +43,7 @@ export const generateShoppingList = (
 		}));
 
 		// 2. Compute recipe inputs from pinned, non-trashed recipes
-		const allRecipes = yield* recipeRepo.findAll(userId);
+		const allRecipes = yield* recipeRepo.findAll(householdId, userId);
 		const pinnedRecipes = allRecipes.filter((r) => r.pinnedAt !== null && r.trashedAt === null);
 		const recipeItemMap = new Map<
 			string,
@@ -76,11 +77,11 @@ export const generateShoppingList = (
 			...restockInputs.map((i) => i.canonicalKey),
 			...recipeItemMap.keys()
 		];
-		yield* shoppingListRepo.removeUncheckedStale(userId, activeCanonicalKeys);
+		yield* shoppingListRepo.removeUncheckedStale(householdId, userId, activeCanonicalKeys);
 
 		// 4. Insert/upsert active items
 		if (restockInputs.length > 0) {
-			yield* shoppingListRepo.addMissingRestock(userId, restockInputs);
+			yield* shoppingListRepo.addMissingRestock(householdId, userId, restockInputs);
 		}
 		if (recipeItemMap.size > 0) {
 			// Build a lookup of inventory quantities by canonical key for deficit calculation
@@ -130,23 +131,25 @@ export const generateShoppingList = (
 					};
 				}
 			);
-			yield* shoppingListRepo.mergeRecipeIngredients(userId, recipeInputs);
+			yield* shoppingListRepo.mergeRecipeIngredients(householdId, userId, recipeInputs);
 		}
 
-		return yield* shoppingListRepo.findAll(userId);
+		return yield* shoppingListRepo.findAll(householdId, userId);
 	});
 
 export const completeShoppingTrip = (
+	householdId: string | null,
 	userId: string
 ): Effect.Effect<void, ShoppingListRepositoryError | RecipeRepositoryError, ShoppingListRepository | RecipeRepository> =>
 	Effect.gen(function* () {
 		const shoppingListRepo = yield* ShoppingListRepository;
 		const recipeRepo = yield* RecipeRepository;
-		yield* shoppingListRepo.clearAll(userId);
-		yield* recipeRepo.unpinAll(userId);
+		yield* shoppingListRepo.clearAll(householdId, userId);
+		yield* recipeRepo.unpinAll(householdId, userId);
 	});
 
 export const setShoppingListItemChecked = (
+	householdId: string | null,
 	userId: string,
 	id: number,
 	checked: boolean
@@ -157,5 +160,5 @@ export const setShoppingListItemChecked = (
 > =>
 	Effect.gen(function* () {
 		const repo = yield* ShoppingListRepository;
-		yield* repo.setChecked(userId, id, checked);
+		yield* repo.setChecked(householdId, userId, id, checked);
 	});

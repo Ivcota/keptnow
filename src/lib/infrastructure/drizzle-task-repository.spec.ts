@@ -8,6 +8,7 @@ import { Database } from './database.js';
 import type { Task } from '$lib/domain/tasks/task.js';
 
 const TEST_USER_ID = 'user-1';
+const TEST_HOUSEHOLD_ID = 'household-1';
 
 const makeDbLayer = (mockDb: object) =>
 	DrizzleTaskRepository.pipe(Layer.provide(Layer.succeed(Database, mockDb as never)));
@@ -37,7 +38,7 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			createTask(TEST_USER_ID, { title: 'Test task', priority: 1 }).pipe(
+			createTask(TEST_HOUSEHOLD_ID, TEST_USER_ID, { title: 'Test task', priority: 1 }).pipe(
 				Effect.provide(makeDbLayer(mockDb))
 			)
 		).then((result) => {
@@ -67,7 +68,7 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			toggleTaskCompletion(TEST_USER_ID, { id: 99 }).pipe(
+			toggleTaskCompletion(TEST_HOUSEHOLD_ID, TEST_USER_ID, { id: 99 }).pipe(
 				Effect.provide(makeDbLayer(mockDb)),
 				Effect.flip
 			)
@@ -99,7 +100,7 @@ describe('DrizzleTaskRepository', () => {
 		};
 
 		return Effect.runPromise(
-			removeTask(TEST_USER_ID, { id: 99 }).pipe(Effect.provide(makeDbLayer(mockDb)), Effect.flip)
+			removeTask(TEST_HOUSEHOLD_ID, TEST_USER_ID, { id: 99 }).pipe(Effect.provide(makeDbLayer(mockDb)), Effect.flip)
 		).then((result) => {
 			expect(result).toBeInstanceOf(TaskNotFoundError);
 			expect((result as TaskNotFoundError).id).toBe(99);

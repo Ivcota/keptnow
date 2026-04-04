@@ -10,6 +10,8 @@ const dbAvailable = !!process.env.DATABASE_URL;
 describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires PostgreSQL)', () => {
 	const testLayer = DrizzleTaskRepository.pipe(Layer.provide(DatabaseLive));
 
+	const HOUSEHOLD_A = 'test-household-a';
+	const HOUSEHOLD_B = 'test-household-b';
 	const USER_A = 'test-user-a';
 	const USER_B = 'test-user-b';
 
@@ -17,8 +19,8 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const { created, all } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Integration test task', priority: 3 });
-				const all = yield* repo.findAll(USER_A);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Integration test task', priority: 3 });
+				const all = yield* repo.findAll(HOUSEHOLD_A, USER_A);
 				return { created, all };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -34,8 +36,8 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const { created, toggled } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Toggle test task', priority: 1 });
-				const toggled = yield* repo.toggleCompletion(USER_A, created.id);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Toggle test task', priority: 1 });
+				const toggled = yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, created.id);
 				return { created, toggled };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -48,9 +50,9 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const { toggled1, toggled2 } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Toggle off test task', priority: 1 });
-				const toggled1 = yield* repo.toggleCompletion(USER_A, created.id);
-				const toggled2 = yield* repo.toggleCompletion(USER_A, created.id);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Toggle off test task', priority: 1 });
+				const toggled1 = yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, created.id);
+				const toggled2 = yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, created.id);
 				return { toggled1, toggled2 };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -63,7 +65,7 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				return yield* repo.toggleCompletion(USER_A, 999999).pipe(Effect.flip);
+				return yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, 999999).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
@@ -74,10 +76,10 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const { created, allBefore, allAfter } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Soft delete test', priority: 1 });
-				const allBefore = yield* repo.findAll(USER_A);
-				yield* repo.softDelete(USER_A, created.id);
-				const allAfter = yield* repo.findAll(USER_A);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Soft delete test', priority: 1 });
+				const allBefore = yield* repo.findAll(HOUSEHOLD_A, USER_A);
+				yield* repo.softDelete(HOUSEHOLD_A, USER_A, created.id);
+				const allAfter = yield* repo.findAll(HOUSEHOLD_A, USER_A);
 				return { created, allBefore, allAfter };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -90,7 +92,7 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				return yield* repo.softDelete(USER_A, 999999).pipe(Effect.flip);
+				return yield* repo.softDelete(HOUSEHOLD_A, USER_A, 999999).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
@@ -101,9 +103,9 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Double delete test', priority: 1 });
-				yield* repo.softDelete(USER_A, created.id);
-				return yield* repo.softDelete(USER_A, created.id).pipe(Effect.flip);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Double delete test', priority: 1 });
+				yield* repo.softDelete(HOUSEHOLD_A, USER_A, created.id);
+				return yield* repo.softDelete(HOUSEHOLD_A, USER_A, created.id).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
@@ -114,9 +116,9 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, { title: 'Toggle on deleted', priority: 1 });
-				yield* repo.softDelete(USER_A, created.id);
-				return yield* repo.toggleCompletion(USER_A, created.id).pipe(Effect.flip);
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Toggle on deleted', priority: 1 });
+				yield* repo.softDelete(HOUSEHOLD_A, USER_A, created.id);
+				return yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, created.id).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
@@ -127,12 +129,12 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		const { toggled, all } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const created = yield* repo.create(USER_A, {
+				const created = yield* repo.create(HOUSEHOLD_A, USER_A, {
 					title: 'Completed visible task',
 					priority: 1
 				});
-				const toggled = yield* repo.toggleCompletion(USER_A, created.id);
-				const all = yield* repo.findAll(USER_A);
+				const toggled = yield* repo.toggleCompletion(HOUSEHOLD_A, USER_A, created.id);
+				const all = yield* repo.findAll(HOUSEHOLD_A, USER_A);
 				return { toggled, all };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -141,12 +143,12 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		expect(all.some((t) => t.id === toggled.id)).toBe(true);
 	});
 
-	it("User A's tasks are not visible to User B", async () => {
+	it("Household A's tasks are not visible to Household B", async () => {
 		const { createdByA, allForB } = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const createdByA = yield* repo.create(USER_A, { title: 'User A task', priority: 1 });
-				const allForB = yield* repo.findAll(USER_B);
+				const createdByA = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Household A task', priority: 1 });
+				const allForB = yield* repo.findAll(HOUSEHOLD_B, USER_B);
 				return { createdByA, allForB };
 			}).pipe(Effect.provide(testLayer))
 		);
@@ -154,30 +156,43 @@ describe.skipIf(!dbAvailable)('DrizzleTaskRepository (integration — requires P
 		expect(allForB.some((t) => t.id === createdByA.id)).toBe(false);
 	});
 
-	it('User A cannot toggle User B task', async () => {
+	it('Household B cannot toggle Household A task', async () => {
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const createdByB = yield* repo.create(USER_B, { title: 'User B task', priority: 1 });
-				return yield* repo.toggleCompletion(USER_A, createdByB.id).pipe(Effect.flip);
+				const createdByA = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Household A task', priority: 1 });
+				return yield* repo.toggleCompletion(HOUSEHOLD_B, USER_B, createdByA.id).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
 		expect(result).toBeInstanceOf(TaskNotFoundError);
 	});
 
-	it('User A cannot delete User B task', async () => {
+	it('Household B cannot delete Household A task', async () => {
 		const result = await Effect.runPromise(
 			Effect.gen(function* () {
 				const repo = yield* TaskRepository;
-				const createdByB = yield* repo.create(USER_B, {
-					title: 'User B task for delete',
+				const createdByA = yield* repo.create(HOUSEHOLD_A, USER_A, {
+					title: 'Household A task for delete',
 					priority: 1
 				});
-				return yield* repo.softDelete(USER_A, createdByB.id).pipe(Effect.flip);
+				return yield* repo.softDelete(HOUSEHOLD_B, USER_B, createdByA.id).pipe(Effect.flip);
 			}).pipe(Effect.provide(testLayer))
 		);
 
 		expect(result).toBeInstanceOf(TaskNotFoundError);
+	});
+
+	it('users in the same household see each other\'s tasks', async () => {
+		const { createdByA, allForB } = await Effect.runPromise(
+			Effect.gen(function* () {
+				const repo = yield* TaskRepository;
+				const createdByA = yield* repo.create(HOUSEHOLD_A, USER_A, { title: 'Shared household task', priority: 1 });
+				const allForB = yield* repo.findAll(HOUSEHOLD_A, USER_B);
+				return { createdByA, allForB };
+			}).pipe(Effect.provide(testLayer))
+		);
+
+		expect(allForB.some((t) => t.id === createdByA.id)).toBe(true);
 	});
 });

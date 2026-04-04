@@ -12,9 +12,12 @@ import {
 } from './use-cases.js';
 import type { Recipe } from './recipe.js';
 
+const TEST_HOUSEHOLD_ID = 'household-a';
+const TEST_USER_ID = 'user-a';
+
 const baseRecipe: Recipe = {
 	id: 1,
-	userId: 'user-a',
+	userId: TEST_USER_ID,
 	name: 'Test Recipe',
 	ingredients: [],
 	notes: [],
@@ -36,6 +39,7 @@ function makeRepo(overrides: Partial<Context.Tag.Service<RecipeRepository>>): La
 		restore: noop,
 		pin: noop,
 		unpin: noop,
+		unpinAll: noop,
 		...overrides
 	} as Context.Tag.Service<RecipeRepository>);
 }
@@ -45,7 +49,7 @@ describe('createRecipe', () => {
 		const layer = makeRepo({ create: () => Effect.succeed(baseRecipe) });
 
 		const error = await Effect.runPromise(
-			createRecipe('user-a', { name: '  ', ingredients: [], notes: [] }).pipe(
+			createRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, { name: '  ', ingredients: [], notes: [] }).pipe(
 				Effect.flip,
 				Effect.provide(layer)
 			)
@@ -58,7 +62,7 @@ describe('createRecipe', () => {
 		const layer = makeRepo({ create: () => Effect.succeed(baseRecipe) });
 
 		const error = await Effect.runPromise(
-			createRecipe('user-a', {
+			createRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Valid Name',
 				ingredients: [{ name: '', quantity: { value: 1, unit: 'count' } }],
 				notes: []
@@ -72,7 +76,7 @@ describe('createRecipe', () => {
 		const layer = makeRepo({ create: () => Effect.succeed(baseRecipe) });
 
 		const error = await Effect.runPromise(
-			createRecipe('user-a', {
+			createRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Valid Name',
 				ingredients: [],
 				notes: [{ text: '   ' }]
@@ -92,7 +96,7 @@ describe('createRecipe', () => {
 		});
 
 		await Effect.runPromise(
-			createRecipe('user-a', { name: '', ingredients: [], notes: [] }).pipe(
+			createRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, { name: '', ingredients: [], notes: [] }).pipe(
 				Effect.ignore,
 				Effect.provide(layer)
 			)
@@ -107,7 +111,7 @@ describe('updateRecipe', () => {
 		const layer = makeRepo({ update: () => Effect.succeed(baseRecipe) });
 
 		const error = await Effect.runPromise(
-			updateRecipe('user-a', { id: 1, name: '', ingredients: [], notes: [] }).pipe(
+			updateRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, { id: 1, name: '', ingredients: [], notes: [] }).pipe(
 				Effect.flip,
 				Effect.provide(layer)
 			)
@@ -120,7 +124,7 @@ describe('updateRecipe', () => {
 		const layer = makeRepo({ update: () => Effect.succeed(baseRecipe) });
 
 		const error = await Effect.runPromise(
-			updateRecipe('user-a', {
+			updateRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				id: 1,
 				name: 'Valid Name',
 				ingredients: [{ name: '   ', quantity: { value: 1, unit: 'count' } }],
@@ -140,7 +144,7 @@ describe('restoreRecipe', () => {
 		const layer = makeRepo({ restore: () => Effect.succeed(trashedRecipe) });
 
 		const error = await Effect.runPromise(
-			restoreRecipe('user-a', 1, now).pipe(Effect.flip, Effect.provide(layer))
+			restoreRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, now).pipe(Effect.flip, Effect.provide(layer))
 		);
 
 		expect(error).toBeInstanceOf(RecipeRestoreExpiredError);
@@ -153,7 +157,7 @@ describe('restoreRecipe', () => {
 		const layer = makeRepo({ restore: () => Effect.succeed(trashedRecipe) });
 
 		const result = await Effect.runPromise(
-			restoreRecipe('user-a', 1, now).pipe(Effect.as('ok'), Effect.provide(layer))
+			restoreRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, now).pipe(Effect.as('ok'), Effect.provide(layer))
 		);
 		expect(result).toBe('ok');
 	});
@@ -166,37 +170,40 @@ describe('restoreRecipe', () => {
 
 		// Exactly 24h is NOT > 24h, so it should succeed
 		const result = await Effect.runPromise(
-			restoreRecipe('user-a', 1, now).pipe(Effect.as('ok'), Effect.provide(layer))
+			restoreRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, now).pipe(Effect.as('ok'), Effect.provide(layer))
 		);
 		expect(result).toBe('ok');
 	});
 });
 
 describe('pinRecipe', () => {
-	it('calls repo.pin with the correct userId and id', async () => {
-		let capturedUserId: string | null = null;
+	it('calls repo.pin with the correct householdId, userId and id', async () => {
+		let capturedHouseholdId: string | null | undefined = undefined;
+		let capturedUserId: string | undefined = undefined;
 		let capturedId: number | null = null;
 		const layer = makeRepo({
-			pin: (userId, id) => {
+			pin: (householdId, userId, id) => {
+				capturedHouseholdId = householdId;
 				capturedUserId = userId;
 				capturedId = id;
 				return Effect.void;
 			}
 		});
 
-		await Effect.runPromise(pinRecipe('user-a', 42).pipe(Effect.provide(layer)));
+		await Effect.runPromise(pinRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 42).pipe(Effect.provide(layer)));
 
-		expect(capturedUserId).toBe('user-a');
+		expect(capturedHouseholdId).toBe(TEST_HOUSEHOLD_ID);
+		expect(capturedUserId).toBe(TEST_USER_ID);
 		expect(capturedId).toBe(42);
 	});
 
 	it('propagates RecipeNotFoundError from repo', async () => {
 		const layer = makeRepo({
-			pin: (_, id) => Effect.fail(new RecipeNotFoundError({ id }))
+			pin: (_, __, id) => Effect.fail(new RecipeNotFoundError({ id }))
 		});
 
 		const error = await Effect.runPromise(
-			pinRecipe('user-a', 42).pipe(Effect.flip, Effect.provide(layer))
+			pinRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 42).pipe(Effect.flip, Effect.provide(layer))
 		);
 
 		expect(error).toBeInstanceOf(RecipeNotFoundError);
@@ -204,30 +211,33 @@ describe('pinRecipe', () => {
 });
 
 describe('unpinRecipe', () => {
-	it('calls repo.unpin with the correct userId and id', async () => {
-		let capturedUserId: string | null = null;
+	it('calls repo.unpin with the correct householdId, userId and id', async () => {
+		let capturedHouseholdId: string | null | undefined = undefined;
+		let capturedUserId: string | undefined = undefined;
 		let capturedId: number | null = null;
 		const layer = makeRepo({
-			unpin: (userId, id) => {
+			unpin: (householdId, userId, id) => {
+				capturedHouseholdId = householdId;
 				capturedUserId = userId;
 				capturedId = id;
 				return Effect.void;
 			}
 		});
 
-		await Effect.runPromise(unpinRecipe('user-a', 7).pipe(Effect.provide(layer)));
+		await Effect.runPromise(unpinRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 7).pipe(Effect.provide(layer)));
 
-		expect(capturedUserId).toBe('user-a');
+		expect(capturedHouseholdId).toBe(TEST_HOUSEHOLD_ID);
+		expect(capturedUserId).toBe(TEST_USER_ID);
 		expect(capturedId).toBe(7);
 	});
 
 	it('propagates RecipeNotFoundError from repo', async () => {
 		const layer = makeRepo({
-			unpin: (_, id) => Effect.fail(new RecipeNotFoundError({ id }))
+			unpin: (_, __, id) => Effect.fail(new RecipeNotFoundError({ id }))
 		});
 
 		const error = await Effect.runPromise(
-			unpinRecipe('user-a', 7).pipe(Effect.flip, Effect.provide(layer))
+			unpinRecipe(TEST_HOUSEHOLD_ID, TEST_USER_ID, 7).pipe(Effect.flip, Effect.provide(layer))
 		);
 
 		expect(error).toBeInstanceOf(RecipeNotFoundError);

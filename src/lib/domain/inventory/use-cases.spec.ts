@@ -22,6 +22,7 @@ import { getRestockItems } from './restock.js';
 import { DEFAULT_EXPIRATION_CONFIG } from './expiration.js';
 
 const TEST_USER_ID = 'user-1';
+const TEST_HOUSEHOLD_ID = 'household-1';
 
 const now = new Date();
 
@@ -59,7 +60,7 @@ describe('domain/inventory', () => {
 		const created = makeFoodItem({ name: 'Eggs', quantity: { value: 12, unit: 'count' } });
 
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Eggs',
 				storageLocation: 'fridge',
 				quantity: { value: 12, unit: 'count' },
@@ -74,7 +75,7 @@ describe('domain/inventory', () => {
 		const items = [makeFoodItem({ id: 1 }), makeFoodItem({ id: 2, name: 'Cheese' })];
 
 		const result = await Effect.runPromise(
-			findAllFoodItems(TEST_USER_ID).pipe(
+			findAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(makeRepo({ findAll: () => Effect.succeed(items) }))
 			)
 		);
@@ -84,7 +85,7 @@ describe('domain/inventory', () => {
 
 	it('createFoodItem fails with FoodItemValidationError for empty name', async () => {
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: '',
 				storageLocation: 'pantry',
 				quantity: { value: 1, unit: 'count' },
@@ -98,7 +99,7 @@ describe('domain/inventory', () => {
 
 	it('createFoodItem fails when quantity value is zero', async () => {
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
 				quantity: { value: 0, unit: 'ml' },
@@ -112,7 +113,7 @@ describe('domain/inventory', () => {
 
 	it('createFoodItem fails when quantity value is negative', async () => {
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
 				quantity: { value: -5, unit: 'ml' },
@@ -128,7 +129,7 @@ describe('domain/inventory', () => {
 		const created = makeFoodItem({ quantity: { value: 473, unit: 'ml' } });
 
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Olive Oil',
 				storageLocation: 'pantry',
 				quantity: { value: 473, unit: 'ml' },
@@ -143,7 +144,7 @@ describe('domain/inventory', () => {
 		const created = makeFoodItem({ quantity: { value: 500, unit: 'g' } });
 
 		const result = await Effect.runPromise(
-			createFoodItem(TEST_USER_ID, {
+			createFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				name: 'Flour',
 				storageLocation: 'pantry',
 				quantity: { value: 500, unit: 'g' },
@@ -158,7 +159,7 @@ describe('domain/inventory', () => {
 		const updated = makeFoodItem({ name: 'Oat Milk', storageLocation: 'pantry' });
 
 		const result = await Effect.runPromise(
-			updateFoodItem(TEST_USER_ID, {
+			updateFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				id: 1,
 				name: 'Oat Milk',
 				storageLocation: 'pantry',
@@ -172,7 +173,7 @@ describe('domain/inventory', () => {
 
 	it('updateFoodItem applies same validation as createFoodItem', async () => {
 		const result = await Effect.runPromise(
-			updateFoodItem(TEST_USER_ID, {
+			updateFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				id: 1,
 				name: '',
 				storageLocation: 'fridge',
@@ -187,7 +188,7 @@ describe('domain/inventory', () => {
 
 	it('updateFoodItem propagates FoodItemNotFoundError', async () => {
 		const result = await Effect.runPromise(
-			updateFoodItem(TEST_USER_ID, {
+			updateFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
 				id: 99,
 				name: 'Ghost Item',
 				storageLocation: 'fridge',
@@ -207,7 +208,7 @@ describe('domain/inventory', () => {
 
 	it('trashFoodItem delegates to repository', async () => {
 		const result = await Effect.runPromise(
-			trashFoodItem(TEST_USER_ID, 1).pipe(Effect.provide(makeRepo()))
+			trashFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1).pipe(Effect.provide(makeRepo()))
 		);
 		expect(result).toBeUndefined();
 	});
@@ -215,7 +216,7 @@ describe('domain/inventory', () => {
 	it('trashAllFoodItems delegates to repo.trashAll', async () => {
 		let trashAllCalled = false;
 		const result = await Effect.runPromise(
-			trashAllFoodItems(TEST_USER_ID).pipe(
+			trashAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(makeRepo({ trashAll: () => { trashAllCalled = true; return Effect.succeed(undefined as void); } }))
 			)
 		);
@@ -225,7 +226,7 @@ describe('domain/inventory', () => {
 
 	it('trashAllFoodItems is a no-op when there are no active items', async () => {
 		const result = await Effect.runPromise(
-			trashAllFoodItems(TEST_USER_ID).pipe(
+			trashAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(makeRepo({ trashAll: () => Effect.succeed(undefined as void) }))
 			)
 		);
@@ -234,7 +235,7 @@ describe('domain/inventory', () => {
 
 	it('trashAllFoodItems propagates FoodItemRepositoryError', async () => {
 		const result = await Effect.runPromise(
-			trashAllFoodItems(TEST_USER_ID).pipe(
+			trashAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(
 					makeRepo({
 						trashAll: () =>
@@ -252,7 +253,7 @@ describe('domain/inventory', () => {
 		const trashedAt = new Date(now.getTime() - (RESTORE_WINDOW_HOURS - 1) * 60 * 60 * 1000);
 
 		const result = await Effect.runPromise(
-			restoreFoodItem(TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()))
+			restoreFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()))
 		);
 		expect(result).toBeUndefined();
 	});
@@ -262,7 +263,7 @@ describe('domain/inventory', () => {
 		const trashedAt = new Date(now.getTime() - (RESTORE_WINDOW_HOURS + 1) * 60 * 60 * 1000);
 
 		const result = await Effect.runPromise(
-			restoreFoodItem(TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()), Effect.flip)
+			restoreFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
 		expect(result).toBeInstanceOf(FoodItemRestoreExpiredError);
 		expect((result as FoodItemRestoreExpiredError).id).toBe(1);
@@ -273,7 +274,7 @@ describe('domain/inventory', () => {
 		const trashedAt = new Date(now.getTime() - RESTORE_WINDOW_HOURS * 60 * 60 * 1000 - 1);
 
 		const result = await Effect.runPromise(
-			restoreFoodItem(TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()), Effect.flip)
+			restoreFoodItem(TEST_HOUSEHOLD_ID, TEST_USER_ID, 1, trashedAt, now).pipe(Effect.provide(makeRepo()), Effect.flip)
 		);
 		expect(result).toBeInstanceOf(FoodItemRestoreExpiredError);
 	});
@@ -284,7 +285,7 @@ describe('domain/inventory', () => {
 		const created = [item1, item2];
 
 		const result = await Effect.runPromise(
-			createFoodItems(TEST_USER_ID, [
+			createFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID, [
 				{
 					name: 'Milk',
 					storageLocation: 'fridge',
@@ -305,7 +306,7 @@ describe('domain/inventory', () => {
 
 	it('createFoodItems fails with FoodItemValidationError when one item has an empty name', async () => {
 		const result = await Effect.runPromise(
-			createFoodItems(TEST_USER_ID, [
+			createFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID, [
 				{
 					name: 'Milk',
 					storageLocation: 'fridge',
@@ -329,7 +330,7 @@ describe('domain/inventory', () => {
 		let bulkCreateCalled = false;
 
 		const result = await Effect.runPromise(
-			createFoodItems(TEST_USER_ID, [
+			createFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID, [
 				{
 					name: 'Bad Item',
 					storageLocation: 'pantry',
@@ -366,7 +367,7 @@ describe('domain/inventory restock integration', () => {
 		];
 
 		const allItems = await Effect.runPromise(
-			findAllFoodItems(TEST_USER_ID).pipe(
+			findAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(makeRepo({ findAll: () => Effect.succeed(items) }))
 			)
 		);
@@ -386,7 +387,7 @@ describe('domain/inventory restock integration', () => {
 		];
 
 		const allItems = await Effect.runPromise(
-			findAllFoodItems(TEST_USER_ID).pipe(
+			findAllFoodItems(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(makeRepo({ findAll: () => Effect.succeed(items) }))
 			)
 		);

@@ -28,18 +28,24 @@ function rowToItem(row: typeof shoppingListItem.$inferSelect): ShoppingListItem 
 	};
 }
 
+function scopeCondition(householdId: string | null, userId: string) {
+	return householdId
+		? eq(shoppingListItem.householdId, householdId)
+		: eq(shoppingListItem.userId, userId);
+}
+
 export const DrizzleShoppingListRepository = Layer.effect(
 	ShoppingListRepository,
 	Effect.gen(function* () {
 		const db = yield* Database;
 		return {
-			findAll: (userId) =>
+			findAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.select()
 							.from(shoppingListItem)
-							.where(eq(shoppingListItem.userId, userId))
+							.where(scopeCondition(householdId, userId))
 							.then((rows) => rows.map(rowToItem)),
 					catch: (e) =>
 						new ShoppingListRepositoryError({
@@ -48,16 +54,17 @@ export const DrizzleShoppingListRepository = Layer.effect(
 						})
 				}),
 
-			addMissingRestock: (userId, items) =>
+			addMissingRestock: (householdId, userId, items) =>
 				Effect.tryPromise({
 					try: async () => {
 						if (items.length === 0) return;
-						// ON CONFLICT (user_id, canonical_key) DO NOTHING — skip already-present keys
+						// ON CONFLICT (household_id, canonical_key) DO NOTHING — skip already-present keys
 						await db
 							.insert(shoppingListItem)
 							.values(
 								items.map((item) => ({
 									userId,
+									householdId,
 									canonicalKey: item.canonicalKey,
 									displayName: item.displayName,
 									checked: false,
@@ -77,11 +84,11 @@ export const DrizzleShoppingListRepository = Layer.effect(
 						})
 				}),
 
-			removeUncheckedStale: (userId, activeCanonicalKeys) =>
+			removeUncheckedStale: (householdId, userId, activeCanonicalKeys) =>
 				Effect.tryPromise({
 					try: async () => {
 						const conditions = [
-							eq(shoppingListItem.userId, userId),
+							scopeCondition(householdId, userId),
 							eq(shoppingListItem.checked, false)
 						];
 						if (activeCanonicalKeys.length > 0) {
@@ -96,16 +103,17 @@ export const DrizzleShoppingListRepository = Layer.effect(
 						})
 				}),
 
-			mergeRecipeIngredients: (userId, items) =>
+			mergeRecipeIngredients: (householdId, userId, items) =>
 				Effect.tryPromise({
 					try: async () => {
 						if (items.length === 0) return;
-						// INSERT new recipe items; on conflict (user_id, canonical_key) update only sourceRecipeNames
+						// INSERT new recipe items; on conflict (household_id, canonical_key) update only sourceRecipeNames
 						await db
 							.insert(shoppingListItem)
 							.values(
 								items.map((item) => ({
 									userId,
+									householdId,
 									canonicalKey: item.canonicalKey,
 									displayName: item.displayName,
 									checked: false,
@@ -117,7 +125,7 @@ export const DrizzleShoppingListRepository = Layer.effect(
 								}))
 							)
 							.onConflictDoUpdate({
-								target: [shoppingListItem.userId, shoppingListItem.canonicalKey],
+								target: [shoppingListItem.householdId, shoppingListItem.canonicalKey],
 								set: {
 									sourceRecipeNames: sql`excluded.source_recipe_names`,
 									quantityValue: sql`excluded.quantity_value`,
@@ -132,14 +140,14 @@ export const DrizzleShoppingListRepository = Layer.effect(
 						})
 				}),
 
-			setChecked: (userId, id, checked) =>
+			setChecked: (householdId, userId, id, checked) =>
 				Effect.gen(function* () {
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db
 								.select()
 								.from(shoppingListItem)
-								.where(and(eq(shoppingListItem.id, id), eq(shoppingListItem.userId, userId))),
+								.where(and(eq(shoppingListItem.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new ShoppingListRepositoryError({
 								message: 'Failed to find shopping list item',
@@ -156,7 +164,7 @@ export const DrizzleShoppingListRepository = Layer.effect(
 							db
 								.update(shoppingListItem)
 								.set({ checked })
-								.where(and(eq(shoppingListItem.id, id), eq(shoppingListItem.userId, userId))),
+								.where(and(eq(shoppingListItem.id, id), scopeCondition(householdId, userId))),
 						catch: (e) =>
 							new ShoppingListRepositoryError({
 								message: 'Failed to update shopping list item',
@@ -165,12 +173,12 @@ export const DrizzleShoppingListRepository = Layer.effect(
 					});
 				}),
 
-			clearAll: (userId) =>
+			clearAll: (householdId, userId) =>
 				Effect.tryPromise({
 					try: () =>
 						db
 							.delete(shoppingListItem)
-							.where(and(eq(shoppingListItem.userId, userId), eq(shoppingListItem.checked, true)))
+							.where(and(scopeCondition(householdId, userId), eq(shoppingListItem.checked, true)))
 							.then(() => undefined),
 					catch: (e) =>
 						new ShoppingListRepositoryError({

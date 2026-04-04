@@ -11,9 +11,10 @@ import {
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
+	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/shop' };
 	const items = await appRuntime.runPromise(
-		withRequestLogging(generateShoppingList(userId), {
+		withRequestLogging(generateShoppingList(householdId, userId), {
 			...ctx,
 			useCase: 'generateShoppingList'
 		}).pipe(Effect.orDie)
@@ -26,6 +27,7 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/shop' };
 		const formData = await request.formData();
 		const id = parseInt(formData.get('id')?.toString() ?? '', 10);
@@ -35,7 +37,7 @@ export const actions: Actions = {
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(setShoppingListItemChecked(userId, id, checked), {
+				withRequestLogging(setShoppingListItemChecked(householdId, userId, id, checked), {
 					...ctx,
 					useCase: 'setShoppingListItemChecked'
 				}),
@@ -56,11 +58,12 @@ export const actions: Actions = {
 		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 
 		const userId = locals.user.id;
+		const householdId = locals.householdId ?? null;
 		const ctx = { userId, requestId: locals.requestId, route: '/shop' };
 
 		const outcome = await appRuntime.runPromise(
 			Effect.match(
-				withRequestLogging(completeShoppingTrip(userId), {
+				withRequestLogging(completeShoppingTrip(householdId, userId), {
 					...ctx,
 					useCase: 'completeShoppingTrip'
 				}),

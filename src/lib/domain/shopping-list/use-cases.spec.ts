@@ -9,6 +9,9 @@ import type { ShoppingListItem, RecipeShoppingItemInput } from './shopping-list-
 import type { FoodItem, CreateFoodItemInput } from '$lib/domain/inventory/food-item.js';
 import type { Recipe } from '$lib/domain/recipe/recipe.js';
 
+const TEST_HOUSEHOLD_ID = 'household-a';
+const TEST_USER_ID = 'user-a';
+
 const now = new Date('2026-01-10T12:00:00Z');
 const expiredDate = new Date('2026-01-05T12:00:00Z'); // 5 days ago
 const freshDate = new Date('2026-06-01T12:00:00Z'); // far future
@@ -16,7 +19,7 @@ const freshDate = new Date('2026-06-01T12:00:00Z'); // far future
 function makeFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
 	return {
 		id: 1,
-		userId: 'user-a',
+		userId: TEST_USER_ID,
 		name: 'Milk',
 		canonicalName: 'milk',
 		storageLocation: 'fridge',
@@ -33,7 +36,7 @@ function makeFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
 function makeShoppingListItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
 	return {
 		id: 1,
-		userId: 'user-a',
+		userId: TEST_USER_ID,
 		canonicalKey: 'milk',
 		displayName: 'Milk',
 		checked: false,
@@ -50,7 +53,7 @@ function makeShoppingListItem(overrides: Partial<ShoppingListItem> = {}): Shoppi
 function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
 	return {
 		id: 1,
-		userId: 'user-a',
+		userId: TEST_USER_ID,
 		name: 'Pasta',
 		ingredients: [],
 		notes: [],
@@ -115,7 +118,7 @@ describe('generateShoppingList', () => {
 		let capturedItems: unknown = null;
 
 		const shoppingListLayer = makeShoppingListRepo({
-			addMissingRestock: (_, items) => {
+			addMissingRestock: (_householdId, _userId, items) => {
 				capturedItems = items;
 				return Effect.void;
 			},
@@ -128,7 +131,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -149,7 +152,7 @@ describe('generateShoppingList', () => {
 		let capturedItems: unknown = null;
 
 		const shoppingListLayer = makeShoppingListRepo({
-			addMissingRestock: (_, items) => {
+			addMissingRestock: (_householdId, _userId, items) => {
 				capturedItems = items;
 				return Effect.void;
 			},
@@ -162,7 +165,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -190,7 +193,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -216,7 +219,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -238,7 +241,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		const result = await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -260,7 +263,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		const error = await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.flip,
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
@@ -279,7 +282,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -291,7 +294,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -314,7 +317,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -326,7 +329,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -344,7 +347,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				mergeCallCount += items.length;
 				return Effect.void;
 			},
@@ -354,7 +357,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([unpinnedRecipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -372,7 +375,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				mergeCallCount += items.length;
 				return Effect.void;
 			},
@@ -382,7 +385,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([trashedRecipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -397,7 +400,7 @@ describe('generateShoppingList', () => {
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
 			mergeRecipeIngredients: () => Effect.void,
-			removeUncheckedStale: (_, keys) => {
+			removeUncheckedStale: (_householdId, _userId, keys) => {
 				capturedKeys = keys;
 				return Effect.void;
 			},
@@ -407,7 +410,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -419,7 +422,7 @@ describe('generateShoppingList', () => {
 		let capturedKeys: string[] | null = null;
 
 		const shoppingListLayer = makeShoppingListRepo({
-			removeUncheckedStale: (_, keys) => {
+			removeUncheckedStale: (_householdId, _userId, keys) => {
 				capturedKeys = keys;
 				return Effect.void;
 			},
@@ -429,7 +432,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -452,7 +455,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -462,7 +465,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe1, recipe2]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -489,7 +492,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -501,7 +504,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -536,7 +539,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -548,7 +551,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe1, recipe2]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -575,7 +578,7 @@ describe('generateShoppingList', () => {
 
 		const shoppingListLayer = makeShoppingListRepo({
 			addMissingRestock: () => Effect.void,
-			mergeRecipeIngredients: (_, items) => {
+			mergeRecipeIngredients: (_householdId, _userId, items) => {
 				capturedRecipeItems = items;
 				return Effect.void;
 			},
@@ -587,7 +590,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([recipe]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -606,7 +609,7 @@ describe('generateShoppingList', () => {
 		let capturedItems: unknown = null;
 
 		const shoppingListLayer = makeShoppingListRepo({
-			addMissingRestock: (_, items) => {
+			addMissingRestock: (_householdId, _userId, items) => {
 				capturedItems = items;
 				return Effect.void;
 			},
@@ -619,7 +622,7 @@ describe('generateShoppingList', () => {
 		const recipeLayer = makeRecipeRepo({ findAll: () => Effect.succeed([]) });
 
 		await Effect.runPromise(
-			generateShoppingList('user-a', now).pipe(
+			generateShoppingList(TEST_HOUSEHOLD_ID, TEST_USER_ID, now).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, foodItemLayer, recipeLayer))
 			)
 		);
@@ -646,7 +649,7 @@ describe('completeShoppingTrip', () => {
 		});
 
 		await Effect.runPromise(
-			completeShoppingTrip('user-a').pipe(
+			completeShoppingTrip(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, recipeLayer))
 			)
 		);
@@ -668,7 +671,7 @@ describe('completeShoppingTrip', () => {
 		});
 
 		await Effect.runPromise(
-			completeShoppingTrip('user-a').pipe(
+			completeShoppingTrip(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 				Effect.provide(Layer.mergeAll(shoppingListLayer, recipeLayer))
 			)
 		);
@@ -686,7 +689,7 @@ describe('completeShoppingTrip', () => {
 
 		await expect(
 			Effect.runPromise(
-				completeShoppingTrip('user-a').pipe(
+				completeShoppingTrip(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 					Effect.provide(Layer.mergeAll(shoppingListLayer, recipeLayer))
 				)
 			)
@@ -703,7 +706,7 @@ describe('completeShoppingTrip', () => {
 
 		await expect(
 			Effect.runPromise(
-				completeShoppingTrip('user-a').pipe(
+				completeShoppingTrip(TEST_HOUSEHOLD_ID, TEST_USER_ID).pipe(
 					Effect.provide(Layer.mergeAll(shoppingListLayer, recipeLayer))
 				)
 			)
