@@ -1,6 +1,7 @@
 {
   "name": "KeptNow",
   "short_name": "KeptNow",
+  "description": "Track your pantry inventory and discover recipes with what you have on hand.",
   "display": "standalone",
   "start_url": "/",
   "theme_color": "#c4a46a",
