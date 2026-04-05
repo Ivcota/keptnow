@@ -4,11 +4,13 @@ A household inventory management app that helps you track food items across your
 
 ## Features
 
-- **Inventory tracking** - Manage food items by storage location (pantry, fridge, freezer) with quantity or amount-based tracking
-- **Expiration alerts** - Automatic warnings for items expiring soon or already expired
-- **Receipt scanning** - Upload grocery receipts and let AI extract items with estimated expiration dates
-- **Restock tab** - See everything that needs attention with quick-shop links
-- **Soft deletes** - Trash items with a 24-hour restore window
+- **Inventory tracking** — Manage food items by storage location (pantry, fridge, freezer) with quantity or amount-based tracking
+- **Expiration alerts** — Automatic warnings for items expiring soon or already expired
+- **Receipt scanning** — Upload grocery receipts and let AI extract items with estimated expiration dates
+- **Restock tab** — See everything that needs attention with quick-shop links
+- **Recipe management** — Scan recipes from photos, match ingredients against your inventory, see cook-readiness at a glance
+- **Households** — Invite family members, share inventory and recipes across a household
+- **PWA support** — Install as a native-feeling app on iOS and Android
 
 ## Tech Stack
 
