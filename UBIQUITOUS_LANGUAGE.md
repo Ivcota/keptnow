@@ -51,6 +51,19 @@
 | **Carried Storage Location** | The Storage Location preserved on a Shopping List Item so the resulting Food Item inherits the correct location | Default location |
 | **Carried Tracking Type** | The Tracking Type preserved on a Shopping List Item so the resulting Food Item inherits the correct measurement | Default tracking |
 
+## Household (new)
+
+| Term | Definition | Aliases to avoid |
+|------|-----------|-----------------|
+| **Household** | A shared inventory space where members collaboratively manage Food Items, Recipes, and Shopping Lists | Family, group, team, account |
+| **Household Role** | A member's permission level within a Household: `owner` or `member` | Permission, access level |
+| **Household Member** | A User belonging to a Household with an assigned Household Role | Participant, collaborator |
+| **Solo Household** (new) | A Household containing exactly one Member (the Owner); auto-created on signup or when the last other Member leaves | Single-user, personal |
+| **Invite Code** (new) | A time-limited UUID (valid 7 days) that grants the holder permission to join a specific Household | Token, access code |
+| **Invite Link** (new) | The shareable URL containing an Invite Code for joining a Household | Share link, join URL |
+| **Transfer Ownership** (new) | The action of reassigning the `owner` role to another Household Member, demoting the former Owner to `member` | Reassign, hand off |
+| **Ownership Constraint** (new) | The rule that an Owner cannot leave a multi-member Household without first transferring ownership | Leave restriction |
+
 ## Lifecycle operations
 
 | Term               | Definition                                                              | Aliases to avoid          |
@@ -80,8 +93,20 @@
 - **Shopping List Items** are deduplicated by **Canonical Key** (new)
 - **Complete Shopping Trip** trashes the original expired **Food Items** and creates fresh replacements (new)
 - A **Pinned Recipe** feeds its unmatched **Ingredients** into the **Shopping List** (new)
+- A **Household** has exactly one **Owner** and up to 10 **Household Members** total (new)
+- A **Solo Household** is auto-created when a User signs up (new)
+- An **Invite Code** belongs to one **Household** and expires after 7 days (new)
+- **Transfer Ownership** swaps roles between two **Household Members** in the same **Household** (new)
+- The **Ownership Constraint** prevents an **Owner** from leaving without first transferring ownership (new)
 
 ## Example dialogue (updated)
+
+> **Dev:** "How do **Households** work when a new user signs up?"
+> **Domain expert:** "Every new user gets a **Solo Household** automatically — just them as the **Owner**. To share inventory, the **Owner** generates an **Invite Code**, which creates an **Invite Link** they can send to family members."
+> **Dev:** "What if the **Owner** wants to leave?"
+> **Domain expert:** "The **Ownership Constraint** prevents that. They must **Transfer Ownership** to another **Household Member** first. If they're in a **Solo Household**, they can freely join another **Household** — their solo one gets cleaned up."
+
+## Example dialogue — inventory & shopping
 
 > **Dev:** "When a user scans a receipt, do the **Extracted Food Items** go straight into inventory?"
 > **Domain expert:** "No — the user reviews the **Extracted Food Items** first and can edit names, **Storage Locations**, and **Tracking Types** before saving. Only then do they become **Food Items**."
@@ -100,3 +125,5 @@
 - **"Ingredient" vs "Food Item"** — An **Ingredient** exists only within a **Recipe**. A **Food Item** exists in inventory. They are linked by **Canonical Name** matching, but are distinct domain concepts with different schemas.
 - **"Checked" vs "Completed"** (new) — A **Shopping List Item** is **Checked** (marked as purchased). A **Task** is **Completed**. Don't use "completed" for shopping items or "checked" for tasks.
 - **"Pin" vs "Favorite"** (new) — A **Pinned Recipe** is selected for meal planning and directly affects the **Shopping List**. Avoid "favorite" — pinning has functional consequences beyond bookmarking.
+- **"Invite Code" vs "Invite Link"** (new) — The **Invite Code** is the UUID token; the **Invite Link** is the shareable URL containing it. Code should distinguish between the two — validate the _code_, share the _link_.
+- **"Leave" vs "Transfer"** (new) — An **Owner** cannot "leave" a multi-member **Household**. They must **Transfer Ownership** first. Only **Members** (non-owners) can leave directly.
