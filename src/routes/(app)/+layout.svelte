@@ -20,7 +20,7 @@
 	];
 </script>
 
-<div class="flex min-h-screen flex-col bg-[#f8f6f3] font-[Nunito_Sans,sans-serif]">
+<div class="flex min-h-dvh flex-col bg-[#f8f6f3] font-[Nunito_Sans,sans-serif] overscroll-y-none">
 	<AppHeader user={data.user} />
 	{@render children()}
 	<nav class="fixed right-0 bottom-0 left-0 z-40 border-t border-[#e8e2d9] bg-white pb-[calc(env(safe-area-inset-bottom)/2)]">
