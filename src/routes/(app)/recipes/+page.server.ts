@@ -21,24 +21,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/recipes' };
-	// Await critical data for initial render; stream trash tab data
-	const [recipes, foodItems] = await Promise.all([
-		appRuntime.runPromise(
+	// Stream all data so the page shell renders immediately (instant tab switch)
+	return {
+		recipes: appRuntime.runPromise(
 			withRequestLogging(findAllRecipes(householdId, userId), { ...ctx, useCase: 'findAllRecipes' }).pipe(
 				Effect.orDie
 			)
 		),
-		appRuntime.runPromise(
+		foodItems: appRuntime.runPromise(
 			withRequestLogging(findAllFoodItems(householdId, userId), {
 				...ctx,
 				useCase: 'findAllFoodItems'
 			}).pipe(Effect.orDie)
-		)
-	]);
-
-	return {
-		recipes,
-		foodItems,
+		),
 		trashedRecipes: appRuntime.runPromise(
 			withRequestLogging(findTrashedRecipes(householdId, userId), {
 				...ctx,

@@ -3,12 +3,28 @@
 	import { compressImage } from '$lib/compress-image.js';
 	import type { PageData, ActionData } from './$types';
 	import type { Recipe } from '$lib/domain/recipe/recipe.js';
+	import type { FoodItem } from '$lib/domain/inventory/food-item.js';
 	import { matchIngredients, calculateReadiness } from '$lib/domain/recipe/ingredient-matching.js';
 	import type { ReadinessStatus } from '$lib/domain/recipe/ingredient-matching.js';
 	import { findSimilarRecipeName } from '$lib/domain/recipe/duplicate-detection.js';
 	import { formatQuantity } from '$lib/format-quantity.js';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	// Resolve streamed data into reactive state
+	let resolvedRecipes = $state<Recipe[]>([]);
+	let resolvedFoodItems = $state<FoodItem[]>([]);
+	let dataLoaded = $state(false);
+
+	$effect(() => {
+		const recipesPromise = data.recipes;
+		const foodItemsPromise = data.foodItems;
+		Promise.all([recipesPromise, foodItemsPromise]).then(([recipes, foodItems]) => {
+			resolvedRecipes = recipes;
+			resolvedFoodItems = foodItems;
+			dataLoaded = true;
+		});
+	});
 
 	type TabId = 'all' | 'ready' | 'almost-ready' | 'need-to-shop' | 'trash';
 
@@ -41,7 +57,7 @@
 
 	// Map of batchId → existing recipe name if a duplicate is detected
 	const batchDuplicates = $derived(
-		new Map(batchRecipes.map((r) => [r.batchId, findSimilarRecipeName(r.name, data.recipes)]))
+		new Map(batchRecipes.map((r) => [r.batchId, findSimilarRecipeName(r.name, resolvedRecipes)]))
 	);
 
 	// Edit state (for existing saved recipes)
@@ -79,9 +95,9 @@
 	// Readiness computed for each recipe
 	const recipeReadiness = $derived(
 		new Map(
-			data.recipes.map((recipe) => [
+			resolvedRecipes.map((recipe) => [
 				recipe.id,
-				calculateReadiness(recipe.ingredients, data.foodItems)
+				calculateReadiness(recipe.ingredients, resolvedFoodItems)
 			])
 		)
 	);
@@ -93,7 +109,7 @@
 	};
 
 	const sortedRecipes = $derived(
-		[...data.recipes].sort((a, b) => {
+		[...resolvedRecipes].sort((a, b) => {
 			const ra = recipeReadiness.get(a.id)!;
 			const rb = recipeReadiness.get(b.id)!;
 			const orderDiff = readinessOrder[ra.status] - readinessOrder[rb.status];
@@ -324,6 +340,12 @@
 {/if}
 
 <main class="mx-auto w-[85%] max-w-5xl pt-6 pb-24">
+	{#if !dataLoaded}
+	<div class="flex flex-col items-center justify-center py-20">
+		<div class="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[#e8e2d9] border-t-[#5c4a2a]"></div>
+		<p class="text-sm text-[#8a7a6a]">Loading recipes...</p>
+	</div>
+	{:else}
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="font-[Cormorant_Garamond,serif] text-3xl font-semibold text-[#2c2416]">Recipes</h1>
 
@@ -575,7 +597,7 @@
 				<div class="flex flex-col gap-3">
 					{#each filteredRecipes as recipe (recipe.id)}
 						{@const readiness = recipeReadiness.get(recipe.id)!}
-						{@const matches = matchIngredients(recipe.ingredients, data.foodItems)}
+						{@const matches = matchIngredients(recipe.ingredients, resolvedFoodItems)}
 						{@const isExpanded = expandedRecipeId === recipe.id}
 						<div class="rounded-2xl border border-[#e8e2d9] bg-white shadow-sm">
 							<div class="px-5 py-4">
@@ -751,6 +773,7 @@
 			{/if}
 			{/await}
 		{/if}
+	{/if}
 	{/if}
 </main>
 

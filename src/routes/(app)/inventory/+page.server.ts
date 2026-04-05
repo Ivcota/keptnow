@@ -32,23 +32,25 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const householdId = locals.householdId ?? null;
 	const ctx = { userId, requestId: locals.requestId, route: '/inventory' };
 
-	// Await critical data for initial render; stream the rest
-	const items = await appRuntime.runPromise(
+	// Stream all data so the page shell renders immediately (instant tab switch)
+	const itemsPromise = appRuntime.runPromise(
 		withRequestLogging(findAllFoodItems(householdId, userId), { ...ctx, useCase: 'findAllFoodItems' }).pipe(
 			Effect.orDie
 		)
 	);
 
 	return {
-		items,
+		items: itemsPromise,
 		trashedItems: appRuntime.runPromise(
 			withRequestLogging(findTrashedFoodItems(householdId, userId), {
 				...ctx,
 				useCase: 'findTrashedFoodItems'
 			}).pipe(Effect.orDie)
 		),
-		restockItems: Effect.runPromise(
-			getRestockItems(items, DEFAULT_EXPIRATION_CONFIG).pipe(Effect.orDie)
+		restockItems: itemsPromise.then((items) =>
+			Effect.runPromise(
+				getRestockItems(items, DEFAULT_EXPIRATION_CONFIG).pipe(Effect.orDie)
+			)
 		)
 	};
 };

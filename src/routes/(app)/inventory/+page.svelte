@@ -15,6 +15,18 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	// Resolve streamed items into reactive state
+	let resolvedItems = $state<FoodItem[]>([]);
+	let itemsLoaded = $state(false);
+
+	$effect(() => {
+		const promise = data.items;
+		promise.then((items) => {
+			resolvedItems = items;
+			itemsLoaded = true;
+		});
+	});
+
 	type TabId = 'all' | StorageLocation | 'trash' | 'restock';
 
 	let activeTab = $state<TabId>('all');
@@ -85,7 +97,7 @@
 	];
 
 	const filteredItems = $derived(
-		data.items
+		resolvedItems
 			.filter((item) => activeTab === 'all' || item.storageLocation === activeTab)
 			.sort((a, b) => {
 				if (a.expirationDate === null && b.expirationDate === null) return 0;
@@ -366,6 +378,12 @@
 {/if}
 
 <main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+	{#if !itemsLoaded}
+	<div class="flex flex-col items-center justify-center py-20">
+		<div class="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[#e8e2d9] border-t-[#5c4a2a]"></div>
+		<p class="text-sm text-[#8a7a6a]">Loading inventory...</p>
+	</div>
+	{:else}
 	<!-- Hero -->
 	<div
 		class="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1714] via-[#252018] to-[#2a2520] p-8 sm:p-10"
@@ -379,11 +397,11 @@
 			Food Inventory
 		</h2>
 		<p class="max-w-xl text-base leading-relaxed text-[#9a9088]">
-			{data.items.length === 0
+			{resolvedItems.length === 0
 				? 'Nothing in inventory yet. Add your first item above.'
-				: `${data.items.length} item${data.items.length === 1 ? '' : 's'} in inventory`}
+				: `${resolvedItems.length} item${resolvedItems.length === 1 ? '' : 's'} in inventory`}
 		</p>
-		{#if data.items.length > 0}
+		{#if resolvedItems.length > 0}
 			<button
 				type="button"
 				onclick={() => (showDeleteAllDialog = true)}
@@ -901,6 +919,7 @@
 			</p>
 		{/if}
 	{/if}
+	{/if}
 </main>
 
 <!-- FAB: Add Items (only shown on inventory tabs, not trash/restock) -->
@@ -1258,7 +1277,7 @@
 			Delete all inventory?
 		</h2>
 		<p class="mb-6 text-sm leading-relaxed text-[#8a8279]">
-			All {data.items.length} item{data.items.length === 1 ? '' : 's'} will be moved to trash. You can restore
+			All {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} will be moved to trash. You can restore
 			them within 24 hours.
 		</p>
 		<div class="flex gap-3">
