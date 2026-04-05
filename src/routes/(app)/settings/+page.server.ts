@@ -20,25 +20,21 @@ import {
 } from '$lib/domain/household/errors.js';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Await household (gates the section), stream members list
-	let household = null;
-	if (locals.householdId) {
-		household = await appRuntime
-			.runPromise(
-				Effect.gen(function* () {
-					const repo = yield* HouseholdRepository;
-					return yield* repo.findByUserId(locals.user!.id);
-				})
-			)
-			.catch(() => null);
-	}
+	const household = await appRuntime
+		.runPromise(
+			Effect.gen(function* () {
+				const repo = yield* HouseholdRepository;
+				return yield* repo.findByUserId(locals.user!.id);
+			})
+		)
+		.catch(() => null);
 
 	return {
 		user: locals.user!,
 		household,
-		members: locals.householdId
+		members: household
 			? appRuntime
-					.runPromise(Effect.either(getMembers(locals.householdId)))
+					.runPromise(Effect.either(getMembers(household.id)))
 					.then((r) => (r._tag === 'Right' ? r.right : []))
 					.catch(() => [] as { id: string; name: string; role: 'owner' | 'member' }[])
 			: Promise.resolve([] as { id: string; name: string; role: 'owner' | 'member' }[]),
